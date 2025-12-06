@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live Feed Quantizer — Frontend</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #fef9f3 0%, #f5ede3 50%, #efe5d9 100%);
+      color: #4a4a4a;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h2 { 
+      margin-bottom: 8px; 
+      font-size: 28px;
+      color: #6b5b47;
+      font-weight: 700;
+    }
+    p { 
+      margin-bottom: 20px; 
+      opacity: 0.8;
+      font-size: 14px;
+      color: #7a6d5f;
+    }
+    video, img { 
+      max-width: 100%; 
+      height: auto; 
+      display: block; 
+      margin-bottom: 12px; 
+      border: 2px solid #d4c4b0;
+      border-radius: 8px;
+      background: #faf5f0;
+      box-shadow: 0 4px 12px rgba(107, 91, 71, 0.1);
+    }
+    #container { 
+      display: grid; 
+      grid-template-columns: 1fr 1fr; 
+      gap: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .box { 
+      border: 2px solid #d4c4b0;
+      padding: 20px;
+      background: rgba(255, 248, 242, 0.9);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(107, 91, 71, 0.08);
+      transition: all 0.3s ease;
+    }
+    .box:hover {
+      box-shadow: 0 8px 32px rgba(107, 91, 71, 0.15);
+      border-color: #c8b5a0;
+      background: rgba(255, 250, 245, 0.95);
+    }
+    .box h4 {
+      margin-bottom: 12px;
+      color: #8b7355;
+      font-size: 16px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    #status { 
+      margin-bottom: 24px; 
+      padding: 16px;
+      background: rgba(212, 196, 176, 0.15);
+      border-left: 4px solid #c8b5a0;
+      border-radius: 8px;
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(212, 196, 176, 0.4);
+    }
+    #status strong {
+      color: #8b7355;
+      display: block;
+      margin-bottom: 8px;
+    }
+    #statusText {
+      color: #5a5a5a;
+      font-weight: 500;
+    }
+    .status-ok { 
+      background: rgba(139, 195, 74, 0.1) !important; 
+      border-left-color: #8bc34a !important;
+      border-color: rgba(139, 195, 74, 0.3) !important;
+    }
+    .status-ok #statusText {
+      color: #7cb342;
+    }
+    .status-error { 
+      background: rgba(229, 57, 53, 0.1) !important; 
+      border-left-color: #e53935 !important;
+      border-color: rgba(229, 57, 53, 0.3) !important;
+    }
+    .status-error #statusText {
+      color: #e53935;
+    }
+    #statsText {
+      margin-top: 8px;
+      display: block;
+      opacity: 0.7;
+      font-size: 12px;
+      color: #8b7355;
+    }
+    button { 
+      padding: 12px 24px; 
+      margin-right: 12px;
+      margin-top: 12px;
+      cursor: pointer; 
+      background: linear-gradient(135deg, #d4a574 0%, #c8956f 100%);
+      color: white; 
+      border: none; 
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(160, 120, 80, 0.2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    button:hover:not(:disabled) { 
+      background: linear-gradient(135deg, #c8956f 0%, #d4a574 100%);
+      box-shadow: 0 6px 20px rgba(160, 120, 80, 0.35);
+      transform: translateY(-2px);
+    }
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    button:disabled { 
+      background: rgba(212, 196, 176, 0.4);
+      cursor: not-allowed;
+      box-shadow: none;
+      color: #999;
+    }
+    @media (max-width: 1024px) {
+      #container {
+        grid-template-columns: 1fr;
+      }
+    }
+    /* Fullscreen behavior: make the processed wrapper fill the viewport */
+    #processedWrap:-webkit-full-screen,
+    #processedWrap:-ms-fullscreen,
+    #processedWrap:fullscreen,
+    #processedWrap.fs {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      border-radius: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: #fdf6ec !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      z-index: 9999 !important;
+    }
+
+    #processedWrap:fullscreen img,
+    #processedWrap:-webkit-full-screen img,
+    #processedWrap:-ms-fullscreen img,
+    #processedWrap.fs img {
+      max-width: 100% !important;
+      max-height: 100% !important;
+      width: auto !important;
+      height: auto !important;
+      object-fit: contain !important;
+    }
+  </style>
+</head>
+<body>
+  <div style="max-width: 1400px; margin: 0 auto;">
+    <h2>🎬 Live Feed Quantizer</h2>
+    <p>Real-time camera processing with audio-driven color palettes. Allow camera and microphone access when prompted.</p>
+
+    <div id="status">
+      <strong>Status:</strong> <span id="statusText">Idle</span>
+      <br />
+      <small id="statsText" style="margin-top: 4px; display: block; opacity: 0.7;"></small>
+    </div>
+
+    <div id="container">
+      <div class="box">
+        <h4>📹 Original Camera</h4>
+        <video id="video" autoplay playsinline muted style="background: #000;"></video>
+        <button id="startBtn">▶ Start</button>
+        <button id="stopBtn" disabled>⏹ Stop</button>
+      </div>
+
+      <div class="box">
+        <h4>✨ Processed Output</h4>
+        <div id="processedWrap" style="background: #fdf6ec; min-height: 240px; display:flex; align-items:center; justify-content:center; border-radius:8px;">
+          <img id="processed" alt="Processed frame will appear here" style="background: transparent; max-width:100%; max-height:100%; object-fit:contain;" />
+        </div>
+
+        <div style="margin-top:12px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <label for="qualityRange" style="font-size:13px; color:#7a6d5f; font-weight:600;">JPEG Quality:</label>
+          <input id="qualityRange" type="range" min="10" max="100" value="40" step="1" />
+          <span id="qualityVal" style="width:48px; text-align:right; color:#5a5a5a; font-weight:600;">40</span>
+          <button id="fullscreenBtn" style="margin-left:8px; padding:8px 12px; font-size:13px;">⤢ Fullscreen</button>
+        </div>
+        <div style="margin-top:16px; display:flex; align-items:center; gap:12px;">
+          <label for="gainRange" style="font-size:13px; color:#7a6d5f; font-weight:600;">🔊 Audio Gain:</label>
+          <input id="gainRange" type="range" min="0.1" max="5" value="1" step="0.1" />
+          <span id="gainVal" style="width:48px; text-align:right; color:#5a5a5a; font-weight:600;">1.0x</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const processed = document.getElementById('processed');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusText = document.getElementById('statusText');
+    const statsText = document.getElementById('statsText');
+
+    let stream = null;
+    let ws = null;
+    let captureInterval = null;
+    let audioContext = null;
+    let audioNode = null;
+    let frameCount = 0;
+    let responseCount = 0;
+    let pendingFrames = 0;
+    const MAX_PENDING = 1;
+    // quality slider controls both client send quality (0.01-1.0) and server encode quality (10-100)
+    const qualityRange = document.getElementById('qualityRange');
+    const qualityVal = document.getElementById('qualityVal');
+    let clientSendQuality = parseInt(qualityRange.value, 10) / 100.0; // 0.4 default
+    let serverEncodeQuality = parseInt(qualityRange.value, 10); // 40 default
+    // audio gain slider
+    const gainRange = document.getElementById('gainRange');
+    const gainVal = document.getElementById('gainVal');
+    let audioGain = parseFloat(gainRange.value); // 1.0 default
+
+    qualityRange.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      qualityVal.textContent = v;
+      clientSendQuality = v / 100.0;
+      serverEncodeQuality = v;
+      // notify server of desired encode quality
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(JSON.stringify({ type: 'jpeg_quality', value: serverEncodeQuality }));
+        } catch (err) {
+          console.error('[WS] Failed to send jpeg_quality:', err);
+        }
+      }
+    });
+
+    gainRange.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      audioGain = v;
+      gainVal.textContent = v.toFixed(1) + 'x';
+      // notify server of desired audio gain
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(JSON.stringify({ type: 'audio_gain', value: audioGain }));
+        } catch (err) {
+          console.error('[WS] Failed to send audio_gain:', err);
+        }
+      }
+    });
+
+    // Fullscreen toggle for processed output
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const processedWrap = document.getElementById('processedWrap');
+    function updateFullscreenButton() {
+      const isFs = !!document.fullscreenElement;
+      fullscreenBtn.textContent = isFs ? '⤡ Exit' : '⤢ Fullscreen';
+    }
+
+    fullscreenBtn.addEventListener('click', async () => {
+      // Attempt native fullscreen first. If the browser doesn't expand the element
+      // (some environments / browsers / extensions can block or behave oddly), fall
+      // back to a manual fullscreen mode that forces the wrapper to fill the viewport.
+      let manualFallback = false;
+      try {
+        if (!document.fullscreenElement) {
+          const p = processedWrap.requestFullscreen();
+          // If requestFullscreen returns a promise, wait briefly and check result
+          if (p && typeof p.then === 'function') {
+            try {
+              await Promise.race([p, new Promise(r => setTimeout(r, 300))]);
+            } catch (err) {
+              // requestFullscreen rejected
+              manualFallback = true;
+            }
+          }
+          // If after the short wait the element is still not fullscreen, enable manual fallback
+          if (document.fullscreenElement !== processedWrap) {
+            manualFallback = true;
+          }
+          if (manualFallback) {
+            processedWrap.classList.add('fs-manual');
+            // ensure body doesn't scroll behind the forced fullscreen
+            document.documentElement.style.overflow = 'hidden';
+          }
+        } else {
+          // exit native fullscreen
+          await document.exitFullscreen();
+        }
+      } catch (err) {
+        console.error('[FS] Fullscreen toggle failed:', err);
+        // fallback to manual mode if native fails
+        processedWrap.classList.add('fs-manual');
+        document.documentElement.style.overflow = 'hidden';
+      }
+      updateFullscreenButton();
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      // toggle helper class so CSS forces full-viewport sizing
+      const isFs = document.fullscreenElement === processedWrap;
+      if (isFs) {
+        processedWrap.classList.add('fs');
+        // ensure any manual class is removed
+        processedWrap.classList.remove('fs-manual');
+        document.documentElement.style.overflow = '';
+      } else {
+        processedWrap.classList.remove('fs');
+        // if we had manual fallback active, remove it when leaving fullscreen
+        if (!document.fullscreenElement) {
+          processedWrap.classList.remove('fs-manual');
+          document.documentElement.style.overflow = '';
+        }
+      }
+      updateFullscreenButton();
+    });
+
+    // allow escaping manual fullscreen with Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (processedWrap.classList.contains('fs-manual')) {
+          processedWrap.classList.remove('fs-manual');
+          document.documentElement.style.overflow = '';
+          updateFullscreenButton();
+        }
+      }
+    });
+
+    // allow clicking the processed image to toggle fullscreen as well (target wrapper)
+    processed.addEventListener('click', async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await processedWrap.requestFullscreen();
+        }
+      } catch (err) {
+        // ignore
+      }
+    });
+
+    function updateStatus(msg, isError = false) {
+      statusText.textContent = msg;
+      const statusDiv = document.getElementById('status');
+      statusDiv.classList.toggle('status-error', isError);
+      statusDiv.classList.toggle('status-ok', !isError && msg.includes('Processing'));
+      console.log('[STATUS]', msg);
+    }
+
+    function updateStats() {
+      statsText.textContent = `Frames sent: ${frameCount} | Responses received: ${responseCount}`;
+    }
+
+    async function startCamera() {
+      try {
+        updateStatus('Requesting camera and microphone...');
+        
+        // request both video and audio
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: true 
+        });
+        video.srcObject = stream;
+        updateStatus('Camera and microphone access granted');
+
+        // setup audio capture via AudioContext and ScriptProcessor
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        audioNode = audioContext.createScriptProcessor(4096, 1, 1);
+
+        audioNode.onaudioprocess = (e) => {
+          const input = e.inputBuffer.getChannelData(0);
+          const copy = new Float32Array(input.length);
+          copy.set(input);
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            try {
+              ws.send(copy.buffer);
+            } catch (err) {
+              console.error('[AUDIO] Send error:', err);
+            }
+          }
+        };
+
+        source.connect(audioNode);
+        audioNode.connect(audioContext.destination);
+      } catch (err) {
+        updateStatus('Camera error: ' + err.message, true);
+        console.error('[CAMERA]', err);
+        throw err;
+      }
+    }
+
+    function connectWs() {
+      updateStatus('Connecting to server...');
+      
+      ws = new WebSocket('ws://localhost:8000/ws');
+      ws.binaryType = 'arraybuffer';
+
+      ws.onopen = () => {
+        updateStatus('WebSocket connected! Starting frame capture...');
+        
+        try {
+          const sr = (audioContext && audioContext.sampleRate) ? audioContext.sampleRate : 44100;
+          const infoMsg = JSON.stringify({ type: 'audio_info', sampleRate: sr });
+          ws.send(infoMsg);
+          console.log('[WS] Sent audio info:', infoMsg);
+        } catch (err) {
+          console.error('[WS] Failed to send audio info:', err);
+        }
+      };
+
+      ws.onmessage = (evt) => {
+        // Decrement pendingFrames when we receive a response
+        pendingFrames = Math.max(0, pendingFrames - 1);
+        responseCount++;
+        if (evt.data && evt.data.length > 0) {
+          processed.src = evt.data;
+          if (responseCount % 5 === 0) {
+            updateStatus(`Processing active - Frames: ${frameCount}, Responses: ${responseCount}`);
+          }
+          updateStats();
+        } else {
+          console.warn('[WS] Empty response from server');
+        }
+      };
+
+      ws.onclose = () => {
+        updateStatus('WebSocket closed', true);
+        console.log('[WS] Connection closed');
+      };
+
+      ws.onerror = (e) => {
+        updateStatus('WebSocket error: ' + (e.message || 'Unknown error'), true);
+        console.error('[WS] Error:', e);
+      };
+    }
+
+    function stopEverything() {
+      if (captureInterval) { clearInterval(captureInterval); captureInterval = null; }
+      if (audioNode) { 
+        audioNode.disconnect(); 
+        audioNode = null;
+      }
+      if (audioContext && audioContext.state !== 'closed') {
+        audioContext.close();
+        audioContext = null;
+      }
+      if (ws) { ws.close(); ws = null; }
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      processed.src = '';
+      frameCount = 0;
+      responseCount = 0;
+      updateStats();
+      updateStatus('Stopped');
+    }
+
+    function startCaptureLoop() {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      let lastLogTime = 0;
+
+      captureInterval = setInterval(() => {
+        if (!video.videoWidth) {
+          if (Date.now() - lastLogTime > 2000) {
+            console.warn('[CAPTURE] Video dimensions not ready yet');
+            lastLogTime = Date.now();
+          }
+          return;
+        }
+
+        // Skip frame if we're backing up
+        if (pendingFrames > MAX_PENDING) {
+          return;
+        }
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Lower quality JPEG for faster transfer (controlled by slider)
+        const dataUrl = canvas.toDataURL('image/jpeg', clientSendQuality);
+        
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          frameCount++;
+          pendingFrames++;
+          try {
+            ws.send(dataUrl);
+            if (frameCount % 30 === 0) {
+              console.log('[CAPTURE] Sent', frameCount, 'frames, pending:', pendingFrames);
+            }
+          } catch (err) {
+            console.error('[CAPTURE] Send error:', err);
+            pendingFrames--;
+          }
+        } else {
+          if (Date.now() - lastLogTime > 2000) {
+            console.warn('[CAPTURE] WebSocket not ready, state:', ws?.readyState);
+            lastLogTime = Date.now();
+          }
+        }
+      }, 33); // ~30 FPS
+    }
+
+
+    startBtn.addEventListener('click', async () => {
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      
+      try {
+        await startCamera();
+        connectWs();
+        setTimeout(() => startCaptureLoop(), 500);
+      } catch (err) {
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      stopEverything();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    });
+
+    updateStatus('Ready. Click Start to begin.');
+    updateStats();
+  </script>
+</body>
+</html>

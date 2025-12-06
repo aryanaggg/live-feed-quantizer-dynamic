@@ -19,7 +19,7 @@ blend_alpha = 0.8
 paused = False
 
 
-def process_frame(frame):
+def process_frame(frame, audio_chunk=None, skip_audio=False):
     global prev_palette, paused
 
     # --- Toggle PAUSE on SPACE ---
@@ -36,9 +36,11 @@ def process_frame(frame):
         return frame
 
     # --- Get latest audio ---
-    audio.update()
-    audio.play_latest()
-    chunk = audio.get_latest_audio()
+    # If an audio chunk is provided (from browser), use it. Otherwise use server-side AudioProcessor.
+    if skip_audio or audio_chunk is None:
+        chunk = audio_chunk
+    else:
+        chunk = audio_chunk
 
     # If nothing available
     if chunk is None or len(chunk) == 0:
@@ -49,12 +51,16 @@ def process_frame(frame):
     gain = rms * GAIN_SCALE
 
     # --- Extract palette from audio ---
-    new_palette = extract_colors_from_audio(
-        audio_array=chunk,
-        sr=AUDIO_SR,
-        N=PALETTE_SIZE,
-        gain=gain
-    )[0]
+    try:
+        new_palette = extract_colors_from_audio(
+            audio_array=chunk,
+            sr=AUDIO_SR,
+            N=PALETTE_SIZE,
+            gain=gain
+        )[0]
+    except Exception as e:
+        print(f"[ERROR] extract_colors_from_audio failed: {e}")
+        return frame
 
     # --- Smooth blend ---
     if prev_palette is not None:
@@ -71,10 +77,18 @@ def process_frame(frame):
     pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
     # --- Quantize image ---
-    quantized_pil = quantize_image(pil_img, blended_palette)
+    try:
+        quantized_pil = quantize_image(pil_img, blended_palette)
+    except Exception as e:
+        print(f"[ERROR] quantize_image failed: {e}")
+        return frame
 
     # --- Convert back to OpenCV ---
-    final_frame = cv2.cvtColor(np.array(quantized_pil), cv2.COLOR_RGB2BGR)
+    try:
+        final_frame = cv2.cvtColor(np.array(quantized_pil), cv2.COLOR_RGB2BGR)
+    except Exception as e:
+        print(f"[ERROR] cv2.cvtColor failed: {e}")
+        return frame
 
     return final_frame
 
