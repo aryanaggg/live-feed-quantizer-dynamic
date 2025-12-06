@@ -410,7 +410,9 @@
     function connectWs() {
       updateStatus('Connecting to server...');
       
-      ws = new WebSocket('ws://localhost:8000/ws');
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      ws = new WebSocket(`${protocol}//${host}/ws`);
       ws.binaryType = 'arraybuffer';
 
       ws.onopen = () => {
