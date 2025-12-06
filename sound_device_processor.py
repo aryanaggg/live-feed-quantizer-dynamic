@@ -3,16 +3,21 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from capture_camera import start_camera
-from capture_audio import AudioProcessor
 from audio_to_palette.music_visualizer import extract_colors_from_audio
 from image_quantizer.quantizer import quantize_image
+
+# Only import local audio for standalone mode
+try:
+    from capture_camera import start_camera
+    from capture_audio import AudioProcessor
+    audio = AudioProcessor()
+except Exception as e:
+    print(f"[WARNING] Local audio capture unavailable: {e}")
+    audio = None
 
 AUDIO_SR = 44100
 PALETTE_SIZE = 7
 GAIN_SCALE = 15
-
-audio = AudioProcessor()
 
 prev_palette = None
 blend_alpha = 0.8
