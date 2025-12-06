@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies for OpenCV and graphics
+# Install system dependencies for OpenCV, graphics, and audio
 RUN apt-get update && apt-get install -y \
     build-essential \
     libsm6 \
@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     libgl1 \
     libglib2.0-0 \
-    libxext6 \
-    libsm6 \
+    libsndfile1 \
+    libsndfile1-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python packages
