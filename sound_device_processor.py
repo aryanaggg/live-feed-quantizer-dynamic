@@ -19,11 +19,10 @@ from __future__ import annotations
 
 import threading
 
-import cv2
 import numpy as np
 
 from audio_to_palette.music_visualizer import extract_colors_from_audio
-from image_quantizer.quantizer import quantize_array
+from image_quantizer.quantizer import quantize_bgr
 
 DEFAULT_SAMPLE_RATE = 44100
 PALETTE_SIZE = 7
@@ -142,14 +141,8 @@ class AudioPaletteQuantizer:
             return None
 
         try:
-            rgb = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
-        except cv2.error as exc:
-            print(f"[ERROR] cvColor conversion failed: {exc}")
-            return frame
-
-        try:
-            quantized_rgb = quantize_array(rgb, palette)
-            return cv2.cvtColor(quantized_rgb, cv2.COLOR_RGB2BGR)
+            quantized_bgr = quantize_bgr(arr, palette)
+            return quantized_bgr
         except Exception as exc:
             print(f"[ERROR] quantize_image failed: {exc}")
             return frame

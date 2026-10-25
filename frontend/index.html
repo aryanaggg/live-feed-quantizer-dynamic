@@ -15,14 +15,14 @@
 
     /* output fills the viewport */
     #processedWrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
-    #processed { width: 100%; height: 100%; object-fit: contain; display: block; transition: opacity .6s var(--ease); }
+    #processed { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity .6s var(--ease); image-rendering: pixelated; }
     #processed:not([src]) { opacity: 0; }
     .empty { position: absolute; font-size: 14px; color: var(--muted); animation: pulse 3.2s ease-in-out infinite; }
     body.on .empty { opacity: 0; animation: none; }
     @keyframes pulse { 50% { opacity: .4; } }
 
     /* camera preview: free-floating, drag anywhere, minimize to a side tab */
-    .pip { position: fixed; z-index: 4; width: clamp(150px, 20vw, 260px); aspect-ratio: 4 / 3; border-radius: 16px; overflow: hidden; background: #0a0a0a; cursor: grab; touch-action: none; user-select: none;
+    .pip { position: fixed; z-index: 4; width: clamp(200px, 24vw, 300px); aspect-ratio: 4 / 3; border-radius: 16px; overflow: hidden; background: #0a0a0a; cursor: grab; touch-action: none; user-select: none;
       box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 16px 40px rgba(0,0,0,.6);
       transition: left .55s var(--spring), top .55s var(--spring), scale .35s var(--spring), box-shadow .3s; }
     .pip.dragging { cursor: grabbing; scale: 1.03; box-shadow: 0 0 0 1px rgba(255,255,255,.25), 0 28px 60px rgba(0,0,0,.7); }
@@ -42,11 +42,18 @@
     .pip.min::after { content: ''; position: absolute; z-index: 3; top: 50%; width: 9px; height: 9px; border: 0 solid #fff; }
     .pip.min[data-side=r]::after { left: 15px; border-width: 0 0 2px 2px; transform: translateY(-50%) rotate(45deg); }
     .pip.min[data-side=l]::after { right: 15px; border-width: 2px 2px 0 0; transform: translateY(-50%) rotate(45deg); }
+    .camList { position: absolute; inset: 0; display:flex; flex-direction:column; gap:6px; padding:10px; overflow: auto; z-index: 3; }
+    .camListItem { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,.08); color:#fff; font-size:12px; cursor:pointer; }
+    .camListItem.active { background:rgba(94,227,161,.25); }
+    .camListItem small { color:var(--muted); }
+    .camListActions { display:flex; gap:6px; }
+    .camListBtn { border:0; background:transparent; color:var(--muted); font-size:11px; cursor:pointer; }
+    .camListBtn:hover { color:#fff; }
 
     /* level: one thin bar on the left edge */
-    .meter { position: fixed; left: 18px; top: 50%; transform: translateY(-50%); z-index: 3; display: flex; flex-direction: column; gap: 8px; }
-    #audioMeter { display: block; }
-    #meterText { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .meter { position: fixed; left: 12px; top: 50%; transform: translateY(-50%); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 6px; background: rgba(0,0,0,.4); border-radius: 8px; backdrop-filter: blur(6px); }
+    #audioMeter { display: block; width: 4px; border-radius: 2px; }
+    #meterText { font-size: 9px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: .04em; }
 
     /* chrome fades away while running */
     .chrome { transition: opacity .5s var(--ease), transform .6s var(--ease); }
@@ -66,13 +73,13 @@
     @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(94,227,161,.6); } 100% { box-shadow: 0 0 0 9px rgba(94,227,161,0); } }
 
     /* controls */
-    #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; justify-content: center; align-items: center; gap: 22px; padding: 56px 0 26px; background: linear-gradient(transparent, rgba(0,0,0,.65)); pointer-events: none; }
+    #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; justify-content: center; align-items: center; gap: clamp(10px, 3vw, 22px); flex-wrap: wrap; padding: 56px 16px 26px; background: linear-gradient(transparent, rgba(0,0,0,.65)); pointer-events: none; }
     #dock > .icon, #dock > .rec { pointer-events: auto; }
-    .icon { width: 46px; height: 46px; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer; color: #fff; background: rgba(255,255,255,.12); transition: background .2s, color .2s, transform .35s var(--spring); }
+    .icon { width: clamp(40px, 8vw, 46px); height: clamp(40px, 8vw, 46px); display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer; color: #fff; background: rgba(255,255,255,.12); transition: background .2s, color .2s, transform .35s var(--spring); }
     .icon:hover { background: rgba(255,255,255,.22); }
     .icon:active { transform: scale(.88); }
     .icon.on { background: #fff; color: #000; }
-    .icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .icon svg { width: clamp(18px, 4vw, 20px); height: clamp(18px, 4vw, 20px); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .icon.is-fs .enter, .icon:not(.is-fs) .exit { display: none; }
 
     .rec { display: grid; }
@@ -87,11 +94,21 @@
     #stopBtn::before { width: 22px; height: 22px; border-radius: 5px; background: #fff; }
     #stopBtn:hover:not(:disabled)::before { background: var(--err); }
 
-    .panel { position: absolute; left: 50%; bottom: 112px; width: min(280px, 90vw); display: grid; gap: 14px; padding: 16px 18px; background: #121212; border: 1px solid rgba(255,255,255,.1); border-radius: 18px; box-shadow: 0 20px 50px rgba(0,0,0,.6);
+    .panel { position: absolute; left: 50%; bottom: 112px; width: min(320px, 90vw); max-height: 60vh; overflow-y: auto; display: grid; gap: 14px; padding: clamp(12px, 3vw, 16px) clamp(14px, 4vw, 18px); background: #121212; border: 1px solid rgba(255,255,255,.1); border-radius: 18px; box-shadow: 0 20px 50px rgba(0,0,0,.6);
       opacity: 0; transform: translate(-50%, 10px) scale(.94); transform-origin: 50% 100%; pointer-events: none; transition: opacity .25s, transform .5s var(--spring); }
     .panel.open { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
-    .row { display: grid; grid-template-columns: 56px 1fr 34px; align-items: center; gap: 12px; }
-    label { font-size: 12.5px; color: var(--muted); }
+    .row { display: grid; grid-template-columns: minmax(48px, 56px) 1fr auto; align-items: center; gap: 10px; }
+    label { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+    .camTabs { display:flex; flex-wrap: wrap; gap:4px; width:100%; background:rgba(255,255,255,.06); border-radius:8px; overflow:hidden; }
+    .camTab { flex:1 1 60px; border:0; background:transparent; color:var(--muted); font-size:10px; font-weight:600; cursor:pointer; text-transform:uppercase; letter-spacing:.04em; transition:all .2s; padding:6px 4px; text-align:center; }
+    .camTab:hover { color:#fff; background:rgba(255,255,255,.1); }
+    .camTab.camTabActive { color:#fff; background:rgba(255,255,255,.18); }
+    .camRow { display:grid; grid-template-columns: minmax(48px, 56px) 1fr auto; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .camRow input { min-width: 0; height: 28px; border: 0; border-radius: 6px; background: rgba(255,255,255,.08); color: #fff; font-size: 12px; padding: 0 10px; box-sizing: border-box; width: 100%; }
+    .camRow input::placeholder { color: var(--muted); }
+    .camRow button { height: 28px; border: 0; border-radius: 6px; background: rgba(255,255,255,.12); color: #fff; font-size: 12px; cursor: pointer; transition: background .2s; white-space: nowrap; padding: 0 12px; }
+    .camRow button:hover { background: rgba(255,255,255,.22); }
+    .camRow button:active { transform: scale(.96); }
     .val { text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; }
     input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px; cursor: pointer; background: linear-gradient(90deg, #fff var(--p, 50%), rgba(255,255,255,.16) var(--p, 50%)); }
     input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 0; transition: transform .25s var(--ease); }
@@ -102,6 +119,7 @@
 
     @media (max-width: 700px) { #statsText { display: none; } .pip { width: 30vw; } }
     @media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition-duration: .01ms !important; } }
+    body.ip-cam #pip, body.rtsp-cam #pip, body.onvif-cam #pip { display: block; }
   </style>
 </head>
 <body>
@@ -113,6 +131,7 @@
   <div class="pip" id="pip">
     <span class="pip-off">Camera off</span>
     <video id="video" autoplay playsinline muted></video>
+    <div id="camList" class="camList"></div>
     <button class="pip-min" id="pipMin" title="Minimize" aria-label="Minimize camera"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
   </div>
 
@@ -133,6 +152,9 @@
     <button class="icon" id="settingsBtn" title="Settings" aria-label="Settings">
       <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
     </button>
+    <button class="icon" id="flipBtn" title="Flip" aria-label="Flip">
+      <svg viewBox="0 0 24 24"><path d="M16 16l3-3-3-3M8 8l-3 3 3 3M16 3v13M8 21V8"/></svg>
+    </button>
     <div class="rec">
       <button id="startBtn" title="Start" aria-label="Start"></button>
       <button id="stopBtn" title="Stop" aria-label="Stop" disabled></button>
@@ -141,9 +163,36 @@
       <svg class="enter" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
       <svg class="exit" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
     </button>
+    <button class="icon" id="cameraBtn" title="Camera" aria-label="Camera">
+      <svg viewBox="0 0 24 24"><path d="M2 7v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2zm20-2h-2.2l-1.4-1.4C19.4 2.6 18.5 2 17.5 2h-11c-1 0-1.9.6-2.2 1.5l-1.4 1.4H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2m-5 14c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z"/></svg>
+    </button>
     <div class="panel" id="panel">
       <div class="row"><label for="qualityRange">Quality</label><input id="qualityRange" type="range" min="10" max="100" value="40" step="1" /><span id="qualityVal" class="val">40</span></div>
       <div class="row"><label for="gainRange">Gain</label><input id="gainRange" type="range" min="0.1" max="5" value="1" step="0.1" /><span id="gainVal" class="val">1.0x</span></div>
+    </div>
+    <div class="panel" id="cameraPanel">
+      <div class="row"><label>Source</label>
+        <div id="camSourceTabs" class="camTabs">
+          <button id="camLocalBtn" class="camTab camTabActive" data-source="local">Local</button>
+          <button id="camIpBtn" class="camTab" data-source="ip">IP</button>
+          <button id="camOnvifBtn" class="camTab" data-source="onvif">ONVIF</button>
+          <button id="camRtspBtn" class="camTab" data-source="rtsp">RTSP</button>
+        </div>
+      </div>
+      <div class="camRow" id="camIpRow" style="display:none;"><label>URL</label><input id="camIpUrl" type="url" placeholder="http://cam.local/snapshot.jpg" /><button id="camConnectBtn">Connect</button></div>
+      <div class="camRow" id="camOnvifRow" style="display:none;">
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label>Device</label>
+          <input id="camOnvifHost" type="text" placeholder="192.168.1.100" />
+          <div style="display:flex;gap:8px;">
+            <input id="camOnvifPort" type="text" placeholder="80" style="flex:0 0 60px;" />
+            <input id="camOnvifUser" type="text" placeholder="user" style="flex:1;" />
+            <input id="camOnvifPass" type="password" placeholder="pass" style="flex:1;" />
+          </div>
+          <button id="camOnvifConnectBtn">Connect</button>
+        </div>
+      </div>
+      <div class="camRow" id="camRtspRow" style="display:none;"><label>URL</label><input id="camRtspUrl" type="url" placeholder="rtsp://192.168.1.100:554/stream" /><button id="camRtspConnectBtn">Connect</button></div>
     </div>
   </div>
 
@@ -162,9 +211,57 @@
     const qualityVal = document.getElementById('qualityVal');
     const gainRange = document.getElementById('gainRange');
     const gainVal = document.getElementById('gainVal');
-    const fullscreenBtn = document.getElementById('fullscreenBtn');
-    const processedWrap = document.getElementById('processedWrap');
-    const dock = document.getElementById('dock');
+    const camListEl = document.getElementById('camList');
+    let savedCams = JSON.parse(localStorage.getItem('savedCams') || '[]');
+    let activeCamId = localStorage.getItem('activeCamId');
+    function saveCams(){ localStorage.setItem('savedCams', JSON.stringify(savedCams)); if(activeCamId) localStorage.setItem('activeCamId', activeCamId); }
+    function renderCamList(){
+      camListEl.innerHTML='';
+      if(savedCams.length===0){
+        const empty=document.createElement('div'); empty.textContent='No saved cameras'; empty.style.color='var(--muted)'; empty.style.fontSize='12px'; camListEl.appendChild(empty); return;
+      }
+      savedCams.forEach(cam=>{
+        const item=document.createElement('div'); item.className='camListItem'+(cam.id===activeCamId?' active':'');
+        const info=document.createElement('div'); info.innerHTML='<div>'+cam.name+'</div><small>'+cam.source.toUpperCase()+'</small>';
+        const actions=document.createElement('div'); actions.className='camListActions';
+        const connect=document.createElement('button'); connect.className='camListBtn'; connect.textContent='Connect'; connect.onclick=(e)=>{e.stopPropagation(); connectSavedCam(cam);};
+        const remove=document.createElement('button'); remove.className='camListBtn'; remove.textContent='Remove'; remove.onclick=(e)=>{e.stopPropagation(); savedCams=savedCams.filter(c=>c.id!==cam.id); if(activeCamId===cam.id) activeCamId=null; saveCams(); renderCamList();};
+        actions.append(connect,remove);
+        item.append(info,actions);
+        camListEl.appendChild(item);
+      });
+    }
+    function connectSavedCam(cam){
+      camSource=cam.source; activeCamId=cam.id; saveCams(); renderCamList();
+      if(!ws || ws.readyState!==WebSocket.OPEN) return;
+      if(cam.source==='local'){ ws.send(JSON.stringify({type:'camera_source',source:'local'})); }
+      else { ws.send(JSON.stringify({type:'camera_source',source:cam.source,url:cam.url})); }
+      setCamPanel(false);
+    }
+    function addSavedCam(name,source,url){
+      const id=Date.now().toString();
+      savedCams.push({id,name,source,url}); activeCamId=id; saveCams(); renderCamList(); connectSavedCam({id,name,source,url});
+    }
+    renderCamList();
+    const flipBtn = document.getElementById('flipBtn');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const cameraPanel = document.getElementById('cameraPanel');
+    const camLocalBtn = document.getElementById('camLocalBtn');
+    const camIpBtn = document.getElementById('camIpBtn');
+    const camIpRow = document.getElementById('camIpRow');
+    const camIpUrl = document.getElementById('camIpUrl');
+    const camConnectBtn = document.getElementById('camConnectBtn');
+    const camOnvifBtn = document.getElementById('camOnvifBtn');
+    const camOnvifRow = document.getElementById('camOnvifRow');
+    const camOnvifHost = document.getElementById('camOnvifHost');
+    const camOnvifPort = document.getElementById('camOnvifPort');
+    const camOnvifUser = document.getElementById('camOnvifUser');
+    const camOnvifPass = document.getElementById('camOnvifPass');
+    const camOnvifConnectBtn = document.getElementById('camOnvifConnectBtn');
+    const camRtspBtn = document.getElementById('camRtspBtn');
+    const camRtspRow = document.getElementById('camRtspRow');
+    const camRtspUrl = document.getElementById('camRtspUrl');
+    const camRtspConnectBtn = document.getElementById('camRtspConnectBtn');
 
     // ================= backend resolution =================
     // Same origin by default; falls back to http://localhost:8000 when served
@@ -230,6 +327,8 @@
     let meterPeakDb = -100;
     let meterAnimationFrame = null;
 
+    let processedSrcUrl = null;
+
     // ================= UI helpers =================
     function updateStatus(msg, isError = false) {
       statusText.textContent = msg;
@@ -261,6 +360,14 @@
       }
       return false;
     }
+
+    let flipMode = 'none';
+    flipBtn.addEventListener('click', () => {
+      const modes = ['none', 'horizontal', 'vertical', 'both'];
+      flipMode = modes[(modes.indexOf(flipMode) + 1) % modes.length];
+      flipBtn.classList.toggle('on', flipMode !== 'none');
+      sendControl({ type: 'flip', mode: flipMode });
+    });
 
     qualityRange.addEventListener('input', (e) => {
       const v = parseInt(e.target.value, 10);
@@ -306,13 +413,13 @@
       dispPeak += (p - dispPeak) * 0.12;
 
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = 'rgba(255,255,255,0.14)';
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
       ctx.beginPath();
       if (ctx.roundRect) ctx.roundRect(0, 0, w, h, w / 2); else ctx.rect(0, 0, w, h);
       ctx.fill();
 
       const g = ctx.createLinearGradient(0, h, 0, 0);
-      g.addColorStop(0, '#fff'); g.addColorStop(0.85, '#fff'); g.addColorStop(0.95, '#ff6b6b');
+      g.addColorStop(0, '#5ee3a1'); g.addColorStop(0.7, '#fff'); g.addColorStop(0.95, '#ff6b6b');
       const fh = Math.max(w, dispLevel * h);
       ctx.fillStyle = g;
       ctx.beginPath();
@@ -320,8 +427,8 @@
       ctx.fill();
 
       if (dispPeak > 0.03) {
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.fillRect(0, Math.max(0, h - dispPeak * h - 2), w, 2);
+        ctx.fillStyle = 'rgba(94,227,161,0.8)';
+        ctx.fillRect(0, Math.max(0, h - dispPeak * h - 1), w, 1);
       }
       meterAnimationFrame = window.requestAnimationFrame(drawAudioMeter);
     }
@@ -336,7 +443,6 @@
     function connectWs() {
       if (!running) return;
       updateStatus('Connecting to server...');
-
       const isHttpsBackend = (backendBase || window.location.protocol).indexOf('https') === 0;
       const protocol = isHttpsBackend ? 'wss:' : 'ws:';
       const host = backendHost();
@@ -355,6 +461,9 @@
         reconnectAttempts = 0;
         updateStatus('Processing');
         notifyServerSettings();
+        if(activeCamId){
+          const cam=savedCams.find(c=>c.id===activeCamId); if(cam) connectSavedCam(cam);
+        }
       };
 
       socket.onmessage = (evt) => {
@@ -372,6 +481,16 @@
             const obj = JSON.parse(data);
             if (obj.type === 'status' && obj.detail === 'waiting_for_mic') {
               updateStatus('Waiting for microphone audio…', true);
+            } else if (obj.type === 'status' && obj.detail === 'camera_connected') {
+            updateStatus('Camera connected');
+            document.body.classList.add('network-cam');
+            if (camSource === 'ip') {
+              document.body.classList.add('ip-cam');
+            } else if (camSource === 'rtsp') {
+              document.body.classList.add('rtsp-cam');
+            } else if (camSource === 'onvif') {
+              document.body.classList.add('onvif-cam');
+            }
             } else if (obj.type === 'error') {
               const detail = obj.detail === 'invalid_frame' ? 'A frame failed to decode on the server.'
                 : obj.detail === 'processing_failed' ? 'A frame failed to process on the server.'
@@ -382,6 +501,18 @@
             console.warn('[WS] Unknown JSON message:', err);
           }
           updateStats();
+          return;
+        }
+
+        if (data instanceof ArrayBuffer) {
+          if (processedSrcUrl) URL.revokeObjectURL(processedSrcUrl);
+          const blob = new Blob([data], { type: 'image/jpeg' });
+          processedSrcUrl = URL.createObjectURL(blob);
+          processed.src = processedSrcUrl;
+          if (responseCount % 5 === 0) {
+            updateStatus('Processing');
+            updateStats();
+          }
           return;
         }
 
@@ -410,6 +541,11 @@
       clearTimeout(reconnectTimer);
       reconnectTimer = setTimeout(() => {
         if (running) connectWs();
+      else {
+        if(activeCamId){
+          const cam=savedCams.find(c=>c.id===activeCamId); if(cam) connectSavedCam(cam);
+        }
+      }
       }, delay);
     }
 
@@ -523,9 +659,15 @@
       frameCount++;
       pendingFrames++;
       try {
-        const dataUrl = captureCtx.canvas.toDataURL('image/jpeg', clientSendQuality);
-        ws.send(dataUrl);
-        if (frameCount % 30 === 0) updateStats();
+        captureCtx.canvas.toBlob((blob) => {
+          if (!blob) {
+            pendingFrames = Math.max(0, pendingFrames - 1);
+            frameCount = Math.max(0, frameCount - 1);
+            return;
+          }
+          ws.send(blob);
+          if (frameCount % 30 === 0) updateStats();
+        }, 'image/jpeg', clientSendQuality);
       } catch (err) {
         console.error('[CAPTURE] Send error:', err);
         pendingFrames = Math.max(0, pendingFrames - 1);
@@ -573,7 +715,9 @@
       }
       video.srcObject = null;
       processed.removeAttribute('src');
-      document.body.classList.remove('on');
+      if (processedSrcUrl) { URL.revokeObjectURL(processedSrcUrl); processedSrcUrl = null; }
+      document.body.classList.remove('on', 'ip-cam', 'rtsp-cam', 'onvif-cam', 'network-cam');
+      camSource = 'local';
       updateFullscreenButton();
 
       frameCount = 0;
@@ -601,10 +745,15 @@
       reconnectAttempts = 0;
 
       try {
-        await startCamera();
-        await resolveBackend();
-        connectWs();
-        startCaptureLoop();
+        if (camSource === 'ip') {
+          await resolveBackend();
+          connectWs();
+        } else {
+          await startCamera();
+          await resolveBackend();
+          connectWs();
+          startCaptureLoop();
+        }
       } catch (err) {
         console.error('[CAMERA]', err);
         updateStatus('Camera error: ' + err.message, true);
@@ -636,6 +785,7 @@
     function setPanel(open) {
       panel.classList.toggle('open', open);
       settingsBtn.classList.toggle('on', open);
+      if (open) setCamPanel(false);
     }
     settingsBtn.addEventListener('click', () => setPanel(!panel.classList.contains('open')));
     document.addEventListener('pointerdown', (e) => {
@@ -643,13 +793,99 @@
     });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setPanel(false); });
 
+    // ================= camera panel =================
+    let camSource = 'local'; // 'local' | 'ip' | 'onvif' | 'rtsp'
+    function setCamPanel(open) {
+      cameraPanel.classList.toggle('open', open);
+      cameraBtn.classList.toggle('on', open);
+      if (open) setPanel(false);
+    }
+    cameraBtn.addEventListener('click', (e) => { e.stopPropagation(); setCamPanel(!cameraPanel.classList.contains('open')); });
+    camLocalBtn.addEventListener('click', () => { selectCamSource('local'); });
+    camIpBtn.addEventListener('click', () => { selectCamSource('ip'); });
+    camOnvifBtn.addEventListener('click', () => { selectCamSource('onvif'); });
+    camRtspBtn.addEventListener('click', () => { selectCamSource('rtsp'); });
+    document.addEventListener('pointerdown', (e) => {
+      if (!cameraPanel.contains(e.target) && !cameraBtn.contains(e.target)) setCamPanel(false);
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setCamPanel(false); });
+
+    function selectCamSource(source) {
+      camSource = source;
+      camLocalBtn.classList.toggle('camTabActive', source === 'local');
+      camIpBtn.classList.toggle('camTabActive', source === 'ip');
+      camOnvifBtn.classList.toggle('camTabActive', source === 'onvif');
+      camRtspBtn.classList.toggle('camTabActive', source === 'rtsp');
+      camIpRow.style.display = source === 'ip' ? 'flex' : 'none';
+      camOnvifRow.style.display = source === 'onvif' ? 'flex' : 'none';
+      camRtspRow.style.display = source === 'rtsp' ? 'flex' : 'none';
+    if (camSource === 'local') {
+      addSavedCam('Local Camera', 'local', '');
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'camera_source', source: 'local' }));
+      }
+    }
+    }
+
+    async function connectIpCamera() {
+      const url = camIpUrl.value.trim();
+      if (!url) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        updateStatus('WebSocket not connected', true);
+        return;
+      }
+      ws.send(JSON.stringify({ type: 'camera_source', source: 'ip', url }));
+      camConnectBtn.textContent = 'Connecting…';
+      addSavedCam('IP Camera', 'ip', url);
+    }
+    camConnectBtn.addEventListener('click', connectIpCamera);
+    camIpUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') connectIpCamera(); });
+
+    function connectOnvifCamera() {
+      const host = camOnvifHost.value.trim();
+      const port = camOnvifPort.value.trim() || '80';
+      const user = camOnvifUser.value.trim();
+      const pass = camOnvifPass.value.trim();
+      if (!host) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        updateStatus('WebSocket not connected', true);
+        return;
+      }
+      let url = `http://${host}:${port}/onvif/snapshot`;
+      if (user) {
+        url = `http://${user}:${pass}@${host}:${port}/onvif/snapshot`;
+      }
+      ws.send(JSON.stringify({ type: 'camera_source', source: 'onvif', url }));
+      camOnvifConnectBtn.textContent = 'Connecting…';
+      addSavedCam('ONVIF Camera', 'onvif', url);
+    }
+    camOnvifConnectBtn.addEventListener('click', connectOnvifCamera);
+    [camOnvifHost, camOnvifPort, camOnvifUser, camOnvifPass].forEach(el => {
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter') connectOnvifCamera(); });
+    });
+
+    function connectRtspCamera() {
+      let url = camRtspUrl.value.trim();
+      if (!url) return;
+      if (!/^rtsp:\/\//i.test(url)) url = 'rtsp://' + url;
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        updateStatus('WebSocket not connected', true);
+        return;
+      }
+      ws.send(JSON.stringify({ type: 'camera_source', source: 'rtsp', url }));
+      camRtspConnectBtn.textContent = 'Connecting…';
+      addSavedCam('RTSP Camera', 'rtsp', url);
+    }
+    camRtspConnectBtn.addEventListener('click', connectRtspCamera);
+    camRtspUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') connectRtspCamera(); });
+
     // ================= idle chrome =================
     let hideTimer = null;
     function wake() {
       document.body.classList.remove('idle');
       clearTimeout(hideTimer);
       hideTimer = setTimeout(() => {
-        const busy = dock.matches(':hover') || dock.contains(document.activeElement) || panel.classList.contains('open');
+        const busy = dock.matches(':hover') || dock.contains(document.activeElement) || panel.classList.contains('open') || cameraPanel.classList.contains('open');
         if (running && !busy) document.body.classList.add('idle');
       }, 2500);
     }
@@ -661,6 +897,8 @@
     const pipMinBtn = document.getElementById('pipMin');
     const EDGE_TAB = 34;
     let pipX = 0, pipY = 64, pipMin = null, drag = null;
+
+    pip.style.cursor = 'grab';
 
     function placePip() {
       const w = pip.offsetWidth, h = pip.offsetHeight;
@@ -678,7 +916,7 @@
     }
 
     pip.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.pip-min')) return;
+      if (e.target.closest('.pip-min') || e.target.closest('.camList')) return;
       pip.setPointerCapture(e.pointerId);
       drag = { sx: e.clientX, sy: e.clientY, ox: pip.offsetLeft, oy: pip.offsetTop, moved: false };
       pip.style.transition = 'none';
@@ -721,7 +959,7 @@
     placePip();
 
     // ================= meter size =================
-    function sizeMeter() { audioMeter.height = Math.max(80, Math.round(window.innerHeight * 0.34)); }
+    function sizeMeter() { audioMeter.height = Math.max(60, Math.round(window.innerHeight * 0.28)); }
     sizeMeter();
     window.addEventListener('resize', sizeMeter);
 
