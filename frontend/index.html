@@ -6,43 +6,86 @@
   <title>Live Feed Quantizer — Frontend</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #fef9f3 0%, #f5ede3 50%, #efe5d9 100%);
       color: #4a4a4a;
       min-height: 100vh;
       padding: 20px;
     }
-    h2 { 
-      margin-bottom: 8px; 
+    h2 {
+      margin-bottom: 8px;
       font-size: 28px;
       color: #6b5b47;
       font-weight: 700;
     }
-    p { 
-      margin-bottom: 20px; 
+    p {
+      margin-bottom: 20px;
       opacity: 0.8;
       font-size: 14px;
       color: #7a6d5f;
     }
-    video, img { 
-      max-width: 100%; 
-      height: auto; 
-      display: block; 
-      margin-bottom: 12px; 
+    video, img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin-bottom: 12px;
       border: 2px solid #d4c4b0;
       border-radius: 8px;
       background: #faf5f0;
       box-shadow: 0 4px 12px rgba(107, 91, 71, 0.1);
     }
-    #container { 
-      display: grid; 
-      grid-template-columns: 1fr 1fr; 
+    #container {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px minmax(0, 1fr);
       gap: 24px;
       max-width: 1400px;
       margin: 0 auto;
+      align-items: center;
     }
-    .box { 
+    .center-panel {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 320px;
+    }
+    .audio-meter-card {
+      width: 100%;
+      max-width: 220px;
+      padding: 16px;
+      border-radius: 18px;
+      background: linear-gradient(145deg, #211d20 0%, #0f0d10 100%);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 36px rgba(0,0,0,0.28);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .audio-meter-card .meter-label {
+      font-size: 10px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: #e8caa6;
+      opacity: 95%;
+    }
+    #audioMeter {
+      width: 100%;
+      height: 280px;
+      display: block;
+      border-radius: 14px;
+      background: radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 70%), linear-gradient(180deg, rgba(10,10,13,0.96), rgba(28,24,28,0.96));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 0 14px rgba(0,0,0,0.45);
+    }
+    #meterText {
+      font-size: 12px;
+      font-weight: 700;
+      color: #f9ddbf;
+      min-height: 18px;
+      text-align: center;
+    }
+    .box {
       border: 2px solid #d4c4b0;
       padding: 20px;
       background: rgba(255, 248, 242, 0.9);
@@ -64,8 +107,8 @@
       text-transform: uppercase;
       letter-spacing: 1px;
     }
-    #status { 
-      margin-bottom: 24px; 
+    #status {
+      margin-bottom: 24px;
       padding: 16px;
       background: rgba(212, 196, 176, 0.15);
       border-left: 4px solid #c8b5a0;
@@ -82,16 +125,16 @@
       color: #5a5a5a;
       font-weight: 500;
     }
-    .status-ok { 
-      background: rgba(139, 195, 74, 0.1) !important; 
+    .status-ok {
+      background: rgba(139, 195, 74, 0.1) !important;
       border-left-color: #8bc34a !important;
       border-color: rgba(139, 195, 74, 0.3) !important;
     }
     .status-ok #statusText {
       color: #7cb342;
     }
-    .status-error { 
-      background: rgba(229, 57, 53, 0.1) !important; 
+    .status-error {
+      background: rgba(229, 57, 53, 0.1) !important;
       border-left-color: #e53935 !important;
       border-color: rgba(229, 57, 53, 0.3) !important;
     }
@@ -105,14 +148,14 @@
       font-size: 12px;
       color: #8b7355;
     }
-    button { 
-      padding: 12px 24px; 
+    button {
+      padding: 12px 24px;
       margin-right: 12px;
       margin-top: 12px;
-      cursor: pointer; 
+      cursor: pointer;
       background: linear-gradient(135deg, #d4a574 0%, #c8956f 100%);
-      color: white; 
-      border: none; 
+      color: white;
+      border: none;
       border-radius: 8px;
       font-weight: 600;
       font-size: 14px;
@@ -121,7 +164,7 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-    button:hover:not(:disabled) { 
+    button:hover:not(:disabled) {
       background: linear-gradient(135deg, #c8956f 0%, #d4a574 100%);
       box-shadow: 0 6px 20px rgba(160, 120, 80, 0.35);
       transform: translateY(-2px);
@@ -129,7 +172,7 @@
     button:active:not(:disabled) {
       transform: translateY(0);
     }
-    button:disabled { 
+    button:disabled {
       background: rgba(212, 196, 176, 0.4);
       cursor: not-allowed;
       box-shadow: none;
@@ -139,12 +182,23 @@
       #container {
         grid-template-columns: 1fr;
       }
+      .center-panel {
+        min-height: auto;
+        order: 2;
+      }
+      .audio-meter-card {
+        max-width: 320px;
+      }
+      #audioMeter {
+        height: 220px;
+      }
     }
     /* Fullscreen behavior: make the processed wrapper fill the viewport */
     #processedWrap:-webkit-full-screen,
     #processedWrap:-ms-fullscreen,
     #processedWrap:fullscreen,
-    #processedWrap.fs {
+    #processedWrap.fs,
+    #processedWrap.fs-manual {
       width: 100vw !important;
       height: 100vh !important;
       max-width: 100vw !important;
@@ -163,7 +217,8 @@
     #processedWrap:fullscreen img,
     #processedWrap:-webkit-full-screen img,
     #processedWrap:-ms-fullscreen img,
-    #processedWrap.fs img {
+    #processedWrap.fs img,
+    #processedWrap.fs-manual img {
       max-width: 100% !important;
       max-height: 100% !important;
       width: auto !important;
@@ -178,7 +233,7 @@
     <p>Real-time camera processing with audio-driven color palettes. Allow camera and microphone access when prompted.</p>
 
     <div id="status">
-      <strong>Status:</strong> <span id="statusText">Idle</span>
+      <strong>Status:</strong> <span id="statusText">Ready. Click Start to begin.</span>
       <br />
       <small id="statsText" style="margin-top: 4px; display: block; opacity: 0.7;"></small>
     </div>
@@ -189,6 +244,14 @@
         <video id="video" autoplay playsinline muted style="background: #000;"></video>
         <button id="startBtn">▶ Start</button>
         <button id="stopBtn" disabled>⏹ Stop</button>
+      </div>
+
+      <div class="center-panel">
+        <div class="audio-meter-card">
+          <div class="meter-label">Audio dB</div>
+          <canvas id="audioMeter" width="160" height="320"></canvas>
+          <div id="meterText">Waiting for microphone…</div>
+        </div>
       </div>
 
       <div class="box">
@@ -213,139 +276,157 @@
   </div>
 
   <script>
+    // ================= element refs =================
     const video = document.getElementById('video');
     const processed = document.getElementById('processed');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
     const statusText = document.getElementById('statusText');
+    const statusDiv = document.getElementById('status');
     const statsText = document.getElementById('statsText');
-
-    let stream = null;
-    let ws = null;
-    let captureInterval = null;
-    let audioContext = null;
-    let audioNode = null;
-    let frameCount = 0;
-    let responseCount = 0;
-    let pendingFrames = 0;
-    const MAX_PENDING = 1;
-    // quality slider controls both client send quality (0.01-1.0) and server encode quality (10-100)
+    const audioMeter = document.getElementById('audioMeter');
+    const meterText = document.getElementById('meterText');
     const qualityRange = document.getElementById('qualityRange');
     const qualityVal = document.getElementById('qualityVal');
-    let clientSendQuality = parseInt(qualityRange.value, 10) / 100.0; // 0.4 default
-    let serverEncodeQuality = parseInt(qualityRange.value, 10); // 40 default
-    // audio gain slider
     const gainRange = document.getElementById('gainRange');
     const gainVal = document.getElementById('gainVal');
-    let audioGain = parseFloat(gainRange.value); // 1.0 default
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const processedWrap = document.getElementById('processedWrap');
+
+    // ================= state =================
+    let stream = null;
+    let ws = null;
+    let running = false;               // user wants the pipeline active
+    let audioContext = null;
+    let mediaSource = null;
+    let audioWorkletNode = null;
+    let scriptNode = null;
+    let captureCanvas = null;
+    let captureCtx = null;
+    let captureTimer = null;           // interval fallback
+    let reconnectTimer = null;
+    let reconnectAttempts = 0;
+
+    let frameCount = 0;
+    let responseCount = 0;
+    let droppedFrames = 0;
+    let pendingFrames = 0;
+    const MAX_PENDING = 2;             // stop sending while we're this far behind
+
+    // quality slider controls both client send quality (0.01-1.0) and server encode quality (10-100)
+    let clientSendQuality = parseInt(qualityRange.value, 10) / 100.0;
+    let serverEncodeQuality = parseInt(qualityRange.value, 10);
+    let audioGain = parseFloat(gainRange.value);
+
+    let meterLevelDb = -100;
+    let meterPeakDb = -100;
+    let meterAnimationFrame = null;
+
+    // ================= UI helpers =================
+    function updateStatus(msg, isError = false) {
+      statusText.textContent = msg;
+      statusDiv.classList.toggle('status-error', isError);
+      statusDiv.classList.toggle('status-ok', !isError && msg.indexOf('Processing') === 0);
+      console.log('[STATUS]', msg);
+    }
+
+    function updateStats() {
+      statsText.textContent = `Frames sent: ${frameCount} | Responses: ${responseCount}` +
+        (droppedFrames ? ` | Dropped (busy): ${droppedFrames}` : '');
+    }
+
+    function updateMeterText() {
+      if (!meterText) return;
+      if (meterLevelDb <= -100) {
+        meterText.textContent = 'Waiting for microphone…';
+      } else {
+        meterText.textContent = `${Math.round(meterLevelDb)} dB`;
+      }
+    }
+
+    // ================= sliders =================
+    function sendControl(payload) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(JSON.stringify(payload));
+          return true;
+        } catch (err) {
+          console.error('[WS] Failed to send control message:', err);
+        }
+      }
+      return false;
+    }
 
     qualityRange.addEventListener('input', (e) => {
       const v = parseInt(e.target.value, 10);
       qualityVal.textContent = v;
       clientSendQuality = v / 100.0;
       serverEncodeQuality = v;
-      // notify server of desired encode quality
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        try {
-          ws.send(JSON.stringify({ type: 'jpeg_quality', value: serverEncodeQuality }));
-        } catch (err) {
-          console.error('[WS] Failed to send jpeg_quality:', err);
-        }
-      }
+      sendControl({ type: 'jpeg_quality', value: serverEncodeQuality });
     });
 
     gainRange.addEventListener('input', (e) => {
       const v = parseFloat(e.target.value);
       audioGain = v;
       gainVal.textContent = v.toFixed(1) + 'x';
-      // notify server of desired audio gain
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        try {
-          ws.send(JSON.stringify({ type: 'audio_gain', value: audioGain }));
-        } catch (err) {
-          console.error('[WS] Failed to send audio_gain:', err);
-        }
-      }
+      sendControl({ type: 'audio_gain', value: audioGain });
     });
 
-    // Fullscreen toggle for processed output
-    const fullscreenBtn = document.getElementById('fullscreenBtn');
-    const processedWrap = document.getElementById('processedWrap');
+    // ================= fullscreen =================
     function updateFullscreenButton() {
-      const isFs = !!document.fullscreenElement;
+      const isFs = !!document.fullscreenElement || processedWrap.classList.contains('fs-manual');
       fullscreenBtn.textContent = isFs ? '⤡ Exit' : '⤢ Fullscreen';
     }
 
+    function enterManualFullscreen() {
+      processedWrap.classList.add('fs-manual');
+      document.documentElement.style.overflow = 'hidden';
+    }
+
+    function exitManualFullscreen() {
+      processedWrap.classList.remove('fs-manual');
+      document.documentElement.style.overflow = '';
+    }
+
     fullscreenBtn.addEventListener('click', async () => {
-      // Attempt native fullscreen first. If the browser doesn't expand the element
-      // (some environments / browsers / extensions can block or behave oddly), fall
-      // back to a manual fullscreen mode that forces the wrapper to fill the viewport.
-      let manualFallback = false;
+      // Try native fullscreen first; fall back to manual full-viewport mode
+      // (some browsers/extensions block requestFullscreen).
       try {
         if (!document.fullscreenElement) {
-          const p = processedWrap.requestFullscreen();
-          // If requestFullscreen returns a promise, wait briefly and check result
+          const p = processedWrap.requestFullscreen ? processedWrap.requestFullscreen() : null;
           if (p && typeof p.then === 'function') {
-            try {
-              await Promise.race([p, new Promise(r => setTimeout(r, 300))]);
-            } catch (err) {
-              // requestFullscreen rejected
-              manualFallback = true;
-            }
+            await Promise.race([p, new Promise(r => setTimeout(r, 300))]);
           }
-          // If after the short wait the element is still not fullscreen, enable manual fallback
           if (document.fullscreenElement !== processedWrap) {
-            manualFallback = true;
-          }
-          if (manualFallback) {
-            processedWrap.classList.add('fs-manual');
-            // ensure body doesn't scroll behind the forced fullscreen
-            document.documentElement.style.overflow = 'hidden';
+            enterManualFullscreen();
           }
         } else {
-          // exit native fullscreen
           await document.exitFullscreen();
         }
       } catch (err) {
         console.error('[FS] Fullscreen toggle failed:', err);
-        // fallback to manual mode if native fails
-        processedWrap.classList.add('fs-manual');
-        document.documentElement.style.overflow = 'hidden';
+        document.fullscreenElement ? document.exitFullscreen() : enterManualFullscreen();
       }
       updateFullscreenButton();
     });
 
     document.addEventListener('fullscreenchange', () => {
-      // toggle helper class so CSS forces full-viewport sizing
-      const isFs = document.fullscreenElement === processedWrap;
-      if (isFs) {
+      if (document.fullscreenElement === processedWrap) {
         processedWrap.classList.add('fs');
-        // ensure any manual class is removed
-        processedWrap.classList.remove('fs-manual');
-        document.documentElement.style.overflow = '';
       } else {
         processedWrap.classList.remove('fs');
-        // if we had manual fallback active, remove it when leaving fullscreen
-        if (!document.fullscreenElement) {
-          processedWrap.classList.remove('fs-manual');
-          document.documentElement.style.overflow = '';
-        }
       }
       updateFullscreenButton();
     });
 
-    // allow escaping manual fullscreen with Escape key
+    // Escape exits manual fullscreen as well
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        if (processedWrap.classList.contains('fs-manual')) {
-          processedWrap.classList.remove('fs-manual');
-          document.documentElement.style.overflow = '';
-          updateFullscreenButton();
-        }
+      if (e.key === 'Escape' && processedWrap.classList.contains('fs-manual')) {
+        exitManualFullscreen();
+        updateFullscreenButton();
       }
     });
 
-    // allow clicking the processed image to toggle fullscreen as well (target wrapper)
     processed.addEventListener('click', async () => {
       try {
         if (!document.fullscreenElement) {
@@ -356,184 +437,373 @@
       }
     });
 
-    function updateStatus(msg, isError = false) {
-      statusText.textContent = msg;
-      const statusDiv = document.getElementById('status');
-      statusDiv.classList.toggle('status-error', isError);
-      statusDiv.classList.toggle('status-ok', !isError && msg.includes('Processing'));
-      console.log('[STATUS]', msg);
-    }
+    // ================= audio meter =================
+    function drawAudioMeter() {
+      const ctx = audioMeter.getContext('2d');
+      const width = audioMeter.width;
+      const height = audioMeter.height;
+      ctx.clearRect(0, 0, width, height);
 
-    function updateStats() {
-      statsText.textContent = `Frames sent: ${frameCount} | Responses received: ${responseCount}`;
-    }
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, '#3b2b2b');
+      gradient.addColorStop(0.5, '#1b181d');
+      gradient.addColorStop(1, '#0b0a0d');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
 
-    async function startCamera() {
-      try {
-        updateStatus('Requesting camera and microphone...');
-        
-        // request both video and audio
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: true 
-        });
-        video.srcObject = stream;
-        updateStatus('Camera and microphone access granted');
-
-        // setup audio capture via AudioContext and ScriptProcessor
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioContext.createMediaStreamSource(stream);
-        audioNode = audioContext.createScriptProcessor(4096, 1, 1);
-
-        audioNode.onaudioprocess = (e) => {
-          const input = e.inputBuffer.getChannelData(0);
-          const copy = new Float32Array(input.length);
-          copy.set(input);
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            try {
-              ws.send(copy.buffer);
-            } catch (err) {
-              console.error('[AUDIO] Send error:', err);
-            }
-          }
-        };
-
-        source.connect(audioNode);
-        audioNode.connect(audioContext.destination);
-      } catch (err) {
-        updateStatus('Camera error: ' + err.message, true);
-        console.error('[CAMERA]', err);
-        throw err;
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 6; i++) {
+        const y = 18 + (i * (height - 36) / 5);
+        ctx.beginPath();
+        ctx.moveTo(18, y);
+        ctx.lineTo(width - 18, y);
+        ctx.stroke();
       }
+
+      const segments = 18;
+      const minDb = -60;
+      const maxDb = 0;
+      const levelDb = Number.isFinite(meterLevelDb) ? meterLevelDb : -100;
+      const peakDb = Number.isFinite(meterPeakDb) ? meterPeakDb : -100;
+
+      for (let i = 0; i < segments; i++) {
+        const thresholdDb = maxDb - ((i / (segments - 1)) * (maxDb - minDb));
+        const isActive = levelDb >= thresholdDb;
+        const barHeight = (height - 40) / segments;
+        const x = 24 + (i % 2) * 12;
+        const y = 20 + i * barHeight;
+        const w = width - 48 - (i % 2) * 12;
+        const h = barHeight - 6;
+        ctx.fillStyle = isActive ? (thresholdDb < -12 ? '#61ffb8' : thresholdDb < -6 ? '#ffd15f' : '#ff6b6b') : 'rgba(255,255,255,0.08)';
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(x, y, w, h, 6);
+        } else {
+          ctx.rect(x, y, w, h);
+        }
+        ctx.fill();
+      }
+
+      const levelY = 20 + ((maxDb - Math.max(minDb, Math.min(maxDb, levelDb))) / (maxDb - minDb)) * (height - 40);
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(12, levelY);
+      ctx.lineTo(width - 12, levelY);
+      ctx.stroke();
+
+      const peakY = 20 + ((maxDb - Math.max(minDb, Math.min(maxDb, peakDb))) / (maxDb - minDb)) * (height - 40);
+      ctx.strokeStyle = 'rgba(255, 107, 107, 0.9)';
+      ctx.beginPath();
+      ctx.moveTo(12, peakY);
+      ctx.lineTo(width - 12, peakY);
+      ctx.stroke();
+
+      meterAnimationFrame = window.requestAnimationFrame(drawAudioMeter);
+    }
+
+    // ================= websocket =================
+    function notifyServerSettings() {
+      // Server-side per-connection settings reset on every (re)connect.
+      sendControl({ type: 'audio_info', sampleRate: (audioContext && audioContext.sampleRate) ? audioContext.sampleRate : 44100 });
+      sendControl({ type: 'jpeg_quality', value: serverEncodeQuality });
+      sendControl({ type: 'audio_gain', value: audioGain });
     }
 
     function connectWs() {
+      if (!running) return;
       updateStatus('Connecting to server...');
-      
+
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.host;
-      ws = new WebSocket(`${protocol}//${host}/ws`);
-      ws.binaryType = 'arraybuffer';
+      let socket;
+      try {
+        socket = new WebSocket(`${protocol}//${host}/ws`);
+      } catch (err) {
+        console.error('[WS] Failed to create WebSocket:', err);
+        scheduleReconnect();
+        return;
+      }
+      ws = socket;
+      socket.binaryType = 'arraybuffer';
 
-      ws.onopen = () => {
-        updateStatus('WebSocket connected! Starting frame capture...');
-        
-        try {
-          const sr = (audioContext && audioContext.sampleRate) ? audioContext.sampleRate : 44100;
-          const infoMsg = JSON.stringify({ type: 'audio_info', sampleRate: sr });
-          ws.send(infoMsg);
-          console.log('[WS] Sent audio info:', infoMsg);
-        } catch (err) {
-          console.error('[WS] Failed to send audio info:', err);
-        }
+      socket.onopen = () => {
+        reconnectAttempts = 0;
+        updateStatus('Processing');
+        notifyServerSettings();
       };
 
-      ws.onmessage = (evt) => {
-        // Decrement pendingFrames when we receive a response
+      socket.onmessage = (evt) => {
         pendingFrames = Math.max(0, pendingFrames - 1);
         responseCount++;
-        if (evt.data && evt.data.length > 0) {
-          processed.src = evt.data;
-          if (responseCount % 5 === 0) {
-            updateStatus(`Processing active - Frames: ${frameCount}, Responses: ${responseCount}`);
+        const data = evt.data;
+
+        if (!data || data.length === 0) {
+          console.warn('[WS] Empty response from server');
+          return;
+        }
+
+        // JSON control replies from the server
+        if (data[0] === '{' || data[0] === '"') {
+          try {
+            const obj = JSON.parse(data);
+            if (obj.type === 'status' && obj.detail === 'waiting_for_mic') {
+              updateStatus('Waiting for microphone audio…', true);
+            } else if (obj.type === 'error') {
+              const detail = obj.detail === 'invalid_frame' ? 'A frame failed to decode on the server.'
+                : obj.detail === 'processing_failed' ? 'A frame failed to process on the server.'
+                : (obj.detail || 'Server error.');
+              console.warn('[WS] Server error:', detail);
+            } else if (obj.type === 'pong') {
+              // liveness ack, nothing to show
+            }
+          } catch (err) {
+            console.warn('[WS] Unknown JSON message:', err);
           }
           updateStats();
-        } else {
-          console.warn('[WS] Empty response from server');
+          return;
+        }
+
+        processed.src = data;
+        if (responseCount % 5 === 0) {
+          updateStatus(`Processing - Frames: ${frameCount}, Responses: ${responseCount}`);
+          updateStats();
         }
       };
 
-      ws.onclose = () => {
-        updateStatus('WebSocket closed', true);
-        console.log('[WS] Connection closed');
+      socket.onclose = () => {
+        if (ws !== socket) return;   // a newer socket replaced this one
+        ws = null;
+        if (!running) {
+          // stopEverything() owns the message in this case
+          return;
+        }
+        scheduleReconnect();
       };
 
-      ws.onerror = (e) => {
-        updateStatus('WebSocket error: ' + (e.message || 'Unknown error'), true);
+      socket.onerror = (e) => {
         console.error('[WS] Error:', e);
       };
     }
 
+    function scheduleReconnect() {
+      const delay = Math.min(5000, 500 * Math.pow(2, reconnectAttempts++));
+      updateStatus(`Connection lost - retrying in ${Math.round(delay / 1000)}s (attempt ${reconnectAttempts})`, true);
+      clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(() => {
+        if (running) connectWs();
+      }, delay);
+    }
+
+    // ================= audio capture =================
+    function handleAudioChunk(input) {
+      // Signal meter (RMS -> dB with peak hold)
+      let sumSquares = 0;
+      for (let i = 0; i < input.length; i++) {
+        sumSquares += input[i] * input[i];
+      }
+      const rms = Math.sqrt(sumSquares / input.length);
+      const db = rms > 0 ? 20 * Math.log10(rms) : -100;
+      meterLevelDb = Math.max(-60, Math.min(0, db));
+      if (meterLevelDb > meterPeakDb) {
+        meterPeakDb = meterLevelDb;
+      } else {
+        meterPeakDb = Math.max(-60, meterPeakDb - 0.18);
+      }
+      updateMeterText();
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(input.buffer);
+        } catch (err) {
+          console.error('[AUDIO] Send error:', err);
+        }
+      }
+    }
+
+    async function setupAudioCapture() {
+      // Preferred: AudioWorklet (runs off the main thread, no dropped audio
+      // when the UI thread is busy). Fallback: deprecated ScriptProcessor.
+      const workletCode = `
+        class MicCapture extends AudioWorkletProcessor {
+          process(inputs) {
+            const channel = inputs[0] && inputs[0][0];
+            if (channel && channel.length) {
+              const copy = new Float32Array(channel.length);
+              copy.set(channel);
+              this.port.postMessage(copy);
+            }
+            return true;
+          }
+        }
+        registerProcessor('mic-capture', MicCapture);
+      `;
+      try {
+        const blobUrl = URL.createObjectURL(new Blob([workletCode], { type: 'application/javascript' }));
+        await audioContext.audioWorklet.addModule(blobUrl);
+        audioWorkletNode = new AudioWorkletNode(audioContext, 'mic-capture');
+        audioWorkletNode.port.onmessage = (e) => {
+          if (e.data instanceof Float32Array) handleAudioChunk(e.data);
+        };
+        mediaSource.connect(audioWorkletNode);
+        console.log('[AUDIO] Using AudioWorklet capture');
+        return;
+      } catch (err) {
+        console.warn('[AUDIO] AudioWorklet unavailable, falling back to ScriptProcessor:', err);
+      }
+
+      scriptNode = audioContext.createScriptProcessor(4096, 1, 1);
+      scriptNode.onaudioprocess = (e) => {
+        const input = e.inputBuffer.getChannelData(0);
+        handleAudioChunk(new Float32Array(input));   // copy: buffer is reused
+      };
+      mediaSource.connect(scriptNode);
+      // ScriptProcessor only bothers to fire when it reaches the destination.
+      scriptNode.connect(audioContext.destination);
+    }
+
+    async function startCamera() {
+      updateStatus('Requesting camera and microphone...');
+
+      // require both video and microphone audio
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+
+      if (!stream.getAudioTracks() || stream.getAudioTracks().length === 0) {
+        throw new Error('Microphone access is required. Please allow microphone access and try again.');
+      }
+
+      video.srcObject = stream;
+      updateStatus('Camera and microphone access granted');
+      meterLevelDb = -100;
+      meterPeakDb = -100;
+      updateMeterText();
+      if (!meterAnimationFrame) {
+        drawAudioMeter();
+      }
+
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      mediaSource = audioContext.createMediaStreamSource(stream);
+      await setupAudioCapture();
+    }
+
+    // ================= frame capture =================
+    function captureFrame() {
+      if (!running || !video.videoWidth) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+      // Backpressure: skip this frame if the server is still catching up,
+      // but keep checking every tick so we recover instantly.
+      if (pendingFrames > MAX_PENDING) {
+        droppedFrames++;
+        if (droppedFrames % 30 === 1) updateStats();
+        return;
+      }
+
+      captureCanvas.width = video.videoWidth;
+      captureCanvas.height = video.videoHeight;
+      captureCtx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+
+      frameCount++;
+      pendingFrames++;
+      try {
+        const dataUrl = captureCtx.canvas.toDataURL('image/jpeg', clientSendQuality);
+        ws.send(dataUrl);
+        if (frameCount % 30 === 0) {
+          updateStats();
+        }
+      } catch (err) {
+        console.error('[CAPTURE] Send error:', err);
+        pendingFrames = Math.max(0, pendingFrames - 1);
+        frameCount = Math.max(0, frameCount - 1);
+      }
+    }
+
+    function startCaptureLoop() {
+      captureCanvas = document.createElement('canvas');
+      captureCtx = captureCanvas.getContext('2d');
+
+      // requestVideoFrameCallback captures exactly when a new camera frame is
+      // ready (less waste, steadier pacing than a 33 ms timer).
+      if (video.requestVideoFrameCallback) {
+        const loop = () => {
+          if (!running) return;
+          captureFrame();
+          video.requestVideoFrameCallback(loop);
+        };
+        video.requestVideoFrameCallback(loop);
+      } else {
+        captureTimer = setInterval(captureFrame, 33); // ~30 FPS fallback
+      }
+    }
+
+    // ================= start / stop =================
     function stopEverything() {
-      if (captureInterval) { clearInterval(captureInterval); captureInterval = null; }
-      if (audioNode) { 
-        audioNode.disconnect(); 
-        audioNode = null;
+      running = false;
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+
+      if (ws) {
+        const socket = ws;
+        ws = null;
+        socket.onclose = null;
+        socket.onerror = null;
+        try { socket.close(); } catch (err) { /* ignore */ }
       }
-      if (audioContext && audioContext.state !== 'closed') {
-        audioContext.close();
-        audioContext = null;
-      }
-      if (ws) { ws.close(); ws = null; }
+      if (captureTimer) { clearInterval(captureTimer); captureTimer = null; }
+      if (audioWorkletNode) { audioWorkletNode.port.onmessage = null; audioWorkletNode.disconnect(); audioWorkletNode = null; }
+      if (scriptNode) { scriptNode.onaudioprocess = null; scriptNode.disconnect(); scriptNode = null; }
+      if (mediaSource) { mediaSource.disconnect(); mediaSource = null; }
+      if (audioContext && audioContext.state !== 'closed') { audioContext.close(); audioContext = null; }
       if (stream) {
         stream.getTracks().forEach(t => t.stop());
         stream = null;
       }
       video.srcObject = null;
       processed.src = '';
+      exitManualFullscreen();
+      updateFullscreenButton();
+
       frameCount = 0;
       responseCount = 0;
+      droppedFrames = 0;
+      pendingFrames = 0;
+      meterLevelDb = -100;
+      meterPeakDb = -100;
+      updateMeterText();
       updateStats();
       updateStatus('Stopped');
     }
 
-    function startCaptureLoop() {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      let lastLogTime = 0;
-
-      captureInterval = setInterval(() => {
-        if (!video.videoWidth) {
-          if (Date.now() - lastLogTime > 2000) {
-            console.warn('[CAPTURE] Video dimensions not ready yet');
-            lastLogTime = Date.now();
-          }
-          return;
-        }
-
-        // Skip frame if we're backing up
-        if (pendingFrames > MAX_PENDING) {
-          return;
-        }
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        // Lower quality JPEG for faster transfer (controlled by slider)
-        const dataUrl = canvas.toDataURL('image/jpeg', clientSendQuality);
-        
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          frameCount++;
-          pendingFrames++;
-          try {
-            ws.send(dataUrl);
-            if (frameCount % 30 === 0) {
-              console.log('[CAPTURE] Sent', frameCount, 'frames, pending:', pendingFrames);
-            }
-          } catch (err) {
-            console.error('[CAPTURE] Send error:', err);
-            pendingFrames--;
-          }
-        } else {
-          if (Date.now() - lastLogTime > 2000) {
-            console.warn('[CAPTURE] WebSocket not ready, state:', ws?.readyState);
-            lastLogTime = Date.now();
-          }
-        }
-      }, 33); // ~30 FPS
-    }
-
-
     startBtn.addEventListener('click', async () => {
       startBtn.disabled = true;
       stopBtn.disabled = false;
-      
+
+      running = true;
+      frameCount = 0;
+      responseCount = 0;
+      droppedFrames = 0;
+      pendingFrames = 0;
+      reconnectAttempts = 0;
+
       try {
         await startCamera();
         connectWs();
-        setTimeout(() => startCaptureLoop(), 500);
+        startCaptureLoop();
       } catch (err) {
+        console.error('[CAMERA]', err);
+        updateStatus('Camera error: ' + err.message, true);
+        running = false;
         startBtn.disabled = false;
         stopBtn.disabled = true;
       }
@@ -545,8 +815,11 @@
       stopBtn.disabled = true;
     });
 
+    // ================= init =================
     updateStatus('Ready. Click Start to begin.');
     updateStats();
+    updateMeterText();
+    drawAudioMeter();
   </script>
 </body>
 </html>
