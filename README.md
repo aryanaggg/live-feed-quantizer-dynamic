@@ -26,8 +26,22 @@ camera frame ──────────────────────�
 ## Run locally (web)
 
 ```bash
-.venv\Scripts\python.exe -m uvicorn server:app --port 8000
-# open http://localhost:8000
+npm run dev
+# BACKEND  : uvicorn with auto-reload on http://localhost:8000
+# FRONTEND : live-reload static server on http://localhost:5500
+```
+
+`npm run dev` starts both processes together under `concurrently` (killing one
+stops the other). The frontend served on :5500 probes `/health` and talks to
+the backend on :8000 automatically; in production (backend serves the page)
+everything is same-origin and no extra config is needed. Override the backend
+endpoint manually with `index.html?backend=localhost:9000` if needed.
+
+Production-style single process (backend serves the frontend too):
+
+```bash
+npm start                                  # http://localhost:8000
+.venv\Scripts\python.exe -m uvicorn server:app --port 8000   # equivalent
 ```
 
 Local window mode:

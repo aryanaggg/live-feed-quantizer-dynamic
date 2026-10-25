@@ -6,6 +6,10 @@ __pycache__/
 .venv/
 venv/
 
+# Node
+node_modules/
+.npm/
+
 # Environment / secrets
 .env
 .env.*
