@@ -3,275 +3,147 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Live Feed Quantizer — Frontend</title>
+  <title>Live Feed Quantizer</title>
   <style>
+    :root { --ease: cubic-bezier(.22, 1, .36, 1); --spring: cubic-bezier(.34, 1.56, .64, 1); --text: #f2f2f2; --muted: #8a8a8a; --err: #ff6b6b; --ok: #5ee3a1; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #fef9f3 0%, #f5ede3 50%, #efe5d9 100%);
-      color: #4a4a4a;
-      min-height: 100vh;
-      padding: 20px;
-    }
-    h2 {
-      margin-bottom: 8px;
-      font-size: 28px;
-      color: #6b5b47;
-      font-weight: 700;
-    }
-    p {
-      margin-bottom: 20px;
-      opacity: 0.8;
-      font-size: 14px;
-      color: #7a6d5f;
-    }
-    video, img {
-      max-width: 100%;
-      height: auto;
-      display: block;
-      margin-bottom: 12px;
-      border: 2px solid #d4c4b0;
-      border-radius: 8px;
-      background: #faf5f0;
-      box-shadow: 0 4px 12px rgba(107, 91, 71, 0.1);
-    }
-    #container {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 220px minmax(0, 1fr);
-      gap: 24px;
-      max-width: 1400px;
-      margin: 0 auto;
-      align-items: center;
-    }
-    .center-panel {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 320px;
-    }
-    .audio-meter-card {
-      width: 100%;
-      max-width: 220px;
-      padding: 16px;
-      border-radius: 18px;
-      background: linear-gradient(145deg, #211d20 0%, #0f0d10 100%);
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 36px rgba(0,0,0,0.28);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    .audio-meter-card .meter-label {
-      font-size: 10px;
-      letter-spacing: 0.24em;
-      text-transform: uppercase;
-      color: #e8caa6;
-      opacity: 95%;
-    }
-    #audioMeter {
-      width: 100%;
-      height: 280px;
-      display: block;
-      border-radius: 14px;
-      background: radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 70%), linear-gradient(180deg, rgba(10,10,13,0.96), rgba(28,24,28,0.96));
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: inset 0 0 14px rgba(0,0,0,0.45);
-    }
-    #meterText {
-      font-size: 12px;
-      font-weight: 700;
-      color: #f9ddbf;
-      min-height: 18px;
-      text-align: center;
-    }
-    .box {
-      border: 2px solid #d4c4b0;
-      padding: 20px;
-      background: rgba(255, 248, 242, 0.9);
-      border-radius: 12px;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 8px 32px rgba(107, 91, 71, 0.08);
-      transition: all 0.3s ease;
-    }
-    .box:hover {
-      box-shadow: 0 8px 32px rgba(107, 91, 71, 0.15);
-      border-color: #c8b5a0;
-      background: rgba(255, 250, 245, 0.95);
-    }
-    .box h4 {
-      margin-bottom: 12px;
-      color: #8b7355;
-      font-size: 16px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    #status {
-      margin-bottom: 24px;
-      padding: 16px;
-      background: rgba(212, 196, 176, 0.15);
-      border-left: 4px solid #c8b5a0;
-      border-radius: 8px;
-      backdrop-filter: blur(10px);
-      border: 2px solid rgba(212, 196, 176, 0.4);
-    }
-    #status strong {
-      color: #8b7355;
-      display: block;
-      margin-bottom: 8px;
-    }
-    #statusText {
-      color: #5a5a5a;
-      font-weight: 500;
-    }
-    .status-ok {
-      background: rgba(139, 195, 74, 0.1) !important;
-      border-left-color: #8bc34a !important;
-      border-color: rgba(139, 195, 74, 0.3) !important;
-    }
-    .status-ok #statusText {
-      color: #7cb342;
-    }
-    .status-error {
-      background: rgba(229, 57, 53, 0.1) !important;
-      border-left-color: #e53935 !important;
-      border-color: rgba(229, 57, 53, 0.3) !important;
-    }
-    .status-error #statusText {
-      color: #e53935;
-    }
-    #statsText {
-      margin-top: 8px;
-      display: block;
-      opacity: 0.7;
-      font-size: 12px;
-      color: #8b7355;
-    }
-    button {
-      padding: 12px 24px;
-      margin-right: 12px;
-      margin-top: 12px;
-      cursor: pointer;
-      background: linear-gradient(135deg, #d4a574 0%, #c8956f 100%);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 14px;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(160, 120, 80, 0.2);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    button:hover:not(:disabled) {
-      background: linear-gradient(135deg, #c8956f 0%, #d4a574 100%);
-      box-shadow: 0 6px 20px rgba(160, 120, 80, 0.35);
-      transform: translateY(-2px);
-    }
-    button:active:not(:disabled) {
-      transform: translateY(0);
-    }
-    button:disabled {
-      background: rgba(212, 196, 176, 0.4);
-      cursor: not-allowed;
-      box-shadow: none;
-      color: #999;
-    }
-    @media (max-width: 1024px) {
-      #container {
-        grid-template-columns: 1fr;
-      }
-      .center-panel {
-        min-height: auto;
-        order: 2;
-      }
-      .audio-meter-card {
-        max-width: 320px;
-      }
-      #audioMeter {
-        height: 220px;
-      }
-    }
-    /* Fullscreen behavior: make the processed wrapper fill the viewport */
-    #processedWrap:-webkit-full-screen,
-    #processedWrap:-ms-fullscreen,
-    #processedWrap:fullscreen,
-    #processedWrap.fs,
-    #processedWrap.fs-manual {
-      width: 100vw !important;
-      height: 100vh !important;
-      max-width: 100vw !important;
-      max-height: 100vh !important;
-      border-radius: 0 !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      background: #fdf6ec !important;
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      z-index: 9999 !important;
-    }
+    html, body { height: 100%; background: #000; color: var(--text); font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+    body { animation: fade .8s ease backwards; }
+    body.idle { cursor: none; }
+    @keyframes fade { from { opacity: 0; } }
+    button:focus-visible, input:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 
-    #processedWrap:fullscreen img,
-    #processedWrap:-webkit-full-screen img,
-    #processedWrap:-ms-fullscreen img,
-    #processedWrap.fs img,
-    #processedWrap.fs-manual img {
-      max-width: 100% !important;
-      max-height: 100% !important;
-      width: auto !important;
-      height: auto !important;
-      object-fit: contain !important;
-    }
+    /* output fills the viewport */
+    #processedWrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+    #processed { width: 100%; height: 100%; object-fit: contain; display: block; transition: opacity .6s var(--ease); }
+    #processed:not([src]) { opacity: 0; }
+    .empty { position: absolute; font-size: 14px; color: var(--muted); animation: pulse 3.2s ease-in-out infinite; }
+    body.on .empty { opacity: 0; animation: none; }
+    @keyframes pulse { 50% { opacity: .4; } }
+
+    /* camera preview: free-floating, drag anywhere, minimize to a side tab */
+    .pip { position: fixed; z-index: 4; width: clamp(150px, 20vw, 260px); aspect-ratio: 4 / 3; border-radius: 16px; overflow: hidden; background: #0a0a0a; cursor: grab; touch-action: none; user-select: none;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 16px 40px rgba(0,0,0,.6);
+      transition: left .55s var(--spring), top .55s var(--spring), scale .35s var(--spring), box-shadow .3s; }
+    .pip.dragging { cursor: grabbing; scale: 1.03; box-shadow: 0 0 0 1px rgba(255,255,255,.25), 0 28px 60px rgba(0,0,0,.7); }
+    .pip video { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+    .pip-off { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+    body.on .pip-off { opacity: 0; }
+    .pip-min { position: absolute; z-index: 2; top: 8px; right: 8px; width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer; color: #fff; background: rgba(0,0,0,.55); opacity: 0; transition: opacity .25s, background .2s; }
+    .pip-min:hover { background: rgba(0,0,0,.8); }
+    .pip:hover .pip-min, .pip-min:focus-visible { opacity: 1; }
+    @media (hover: none) { .pip-min { opacity: 1; } }
+    .pip-min svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .3s var(--ease); }
+    .pip[data-half=l] .pip-min { right: auto; left: 8px; }
+    .pip[data-half=l] .pip-min svg { transform: rotate(180deg); }
+    .pip.min { cursor: pointer; }
+    .pip.min .pip-min { display: none; }
+    .pip.min::before { content: ''; position: absolute; inset: 0; z-index: 2; background: rgba(0,0,0,.55); }
+    .pip.min::after { content: ''; position: absolute; z-index: 3; top: 50%; width: 9px; height: 9px; border: 0 solid #fff; }
+    .pip.min[data-side=r]::after { left: 15px; border-width: 0 0 2px 2px; transform: translateY(-50%) rotate(45deg); }
+    .pip.min[data-side=l]::after { right: 15px; border-width: 2px 2px 0 0; transform: translateY(-50%) rotate(45deg); }
+
+    /* level: one thin bar on the left edge */
+    .meter { position: fixed; left: 18px; top: 50%; transform: translateY(-50%); z-index: 3; display: flex; flex-direction: column; gap: 8px; }
+    #audioMeter { display: block; }
+    #meterText { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+    /* chrome fades away while running */
+    .chrome { transition: opacity .5s var(--ease), transform .6s var(--ease); }
+    body.idle .chrome { opacity: 0; }
+    body.idle:has(.status-error) .chrome { opacity: 1; }
+
+    header { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 22px 40px; background: linear-gradient(rgba(0,0,0,.6), transparent); pointer-events: none; }
+    h1 { font-size: 13px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; }
+    #status { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 12.5px; }
+    #status::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background .4s; }
+    #statusText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #statsText { color: var(--muted); font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #statsText:empty { display: none; }
+    .status-ok::before { background: var(--ok); animation: ping 1.8s ease-out infinite; }
+    .status-error::before { background: var(--err); }
+    .status-error #statusText { color: var(--err); }
+    @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(94,227,161,.6); } 100% { box-shadow: 0 0 0 9px rgba(94,227,161,0); } }
+
+    /* controls */
+    #dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; justify-content: center; align-items: center; gap: 22px; padding: 56px 0 26px; background: linear-gradient(transparent, rgba(0,0,0,.65)); pointer-events: none; }
+    #dock > .icon, #dock > .rec { pointer-events: auto; }
+    .icon { width: 46px; height: 46px; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer; color: #fff; background: rgba(255,255,255,.12); transition: background .2s, color .2s, transform .35s var(--spring); }
+    .icon:hover { background: rgba(255,255,255,.22); }
+    .icon:active { transform: scale(.88); }
+    .icon.on { background: #fff; color: #000; }
+    .icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .icon.is-fs .enter, .icon:not(.is-fs) .exit { display: none; }
+
+    .rec { display: grid; }
+    .rec button { grid-area: 1 / 1; width: 66px; height: 66px; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer; transition: transform .5s var(--spring), opacity .3s, background .2s; }
+    .rec button::before { content: ''; transition: background .2s; }
+    .rec button:hover:not(:disabled) { transform: scale(1.07); }
+    .rec button:active:not(:disabled) { transform: scale(.94); }
+    .rec button:disabled { transform: scale(.4) rotate(-90deg); opacity: 0; pointer-events: none; }
+    #startBtn { background: #fff; }
+    #startBtn::before { width: 22px; height: 24px; margin-left: 5px; background: #000; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+    #stopBtn { background: transparent; box-shadow: inset 0 0 0 2.5px #fff; }
+    #stopBtn::before { width: 22px; height: 22px; border-radius: 5px; background: #fff; }
+    #stopBtn:hover:not(:disabled)::before { background: var(--err); }
+
+    .panel { position: absolute; left: 50%; bottom: 112px; width: min(280px, 90vw); display: grid; gap: 14px; padding: 16px 18px; background: #121212; border: 1px solid rgba(255,255,255,.1); border-radius: 18px; box-shadow: 0 20px 50px rgba(0,0,0,.6);
+      opacity: 0; transform: translate(-50%, 10px) scale(.94); transform-origin: 50% 100%; pointer-events: none; transition: opacity .25s, transform .5s var(--spring); }
+    .panel.open { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+    .row { display: grid; grid-template-columns: 56px 1fr 34px; align-items: center; gap: 12px; }
+    label { font-size: 12.5px; color: var(--muted); }
+    .val { text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+    input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px; cursor: pointer; background: linear-gradient(90deg, #fff var(--p, 50%), rgba(255,255,255,.16) var(--p, 50%)); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 0; transition: transform .25s var(--ease); }
+    input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 0; transition: transform .25s var(--ease); }
+    input[type=range]::-moz-range-track { background: transparent; }
+    input[type=range]:hover::-webkit-slider-thumb, input[type=range]:active::-webkit-slider-thumb { transform: scale(1.3); }
+    input[type=range]:hover::-moz-range-thumb, input[type=range]:active::-moz-range-thumb { transform: scale(1.3); }
+
+    @media (max-width: 700px) { #statsText { display: none; } .pip { width: 30vw; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition-duration: .01ms !important; } }
   </style>
 </head>
 <body>
-  <div style="max-width: 1400px; margin: 0 auto;">
-    <h2>🎬 Live Feed Quantizer</h2>
-    <p>Real-time camera processing with audio-driven color palettes. Allow camera and microphone access when prompted.</p>
+  <section id="processedWrap">
+    <span class="empty">Press start to begin</span>
+    <img id="processed" alt="Processed output" />
+  </section>
 
+  <div class="pip" id="pip">
+    <span class="pip-off">Camera off</span>
+    <video id="video" autoplay playsinline muted></video>
+    <button class="pip-min" id="pipMin" title="Minimize" aria-label="Minimize camera"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
+
+  <aside class="meter">
+    <canvas id="audioMeter" width="4" height="240"></canvas>
+    <div id="meterText">—</div>
+  </aside>
+
+  <header class="chrome">
+    <h1>Live Feed Quantizer</h1>
     <div id="status">
-      <strong>Status:</strong> <span id="statusText">Ready. Click Start to begin.</span>
-      <br />
-      <small id="statsText" style="margin-top: 4px; display: block; opacity: 0.7;"></small>
+      <span id="statusText">Ready. Click Start to begin.</span>
+      <small id="statsText"></small>
     </div>
+  </header>
 
-    <div id="container">
-      <div class="box">
-        <h4>📹 Original Camera</h4>
-        <video id="video" autoplay playsinline muted style="background: #000;"></video>
-        <button id="startBtn">▶ Start</button>
-        <button id="stopBtn" disabled>⏹ Stop</button>
-      </div>
-
-      <div class="center-panel">
-        <div class="audio-meter-card">
-          <div class="meter-label">Audio dB</div>
-          <canvas id="audioMeter" width="160" height="320"></canvas>
-          <div id="meterText">Waiting for microphone…</div>
-        </div>
-      </div>
-
-      <div class="box">
-        <h4>✨ Processed Output</h4>
-        <div id="processedWrap" style="background: #fdf6ec; min-height: 240px; display:flex; align-items:center; justify-content:center; border-radius:8px;">
-          <img id="processed" alt="Processed frame will appear here" style="background: transparent; max-width:100%; max-height:100%; object-fit:contain;" />
-        </div>
-
-        <div style="margin-top:12px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-          <label for="qualityRange" style="font-size:13px; color:#7a6d5f; font-weight:600;">JPEG Quality:</label>
-          <input id="qualityRange" type="range" min="10" max="100" value="40" step="1" />
-          <span id="qualityVal" style="width:48px; text-align:right; color:#5a5a5a; font-weight:600;">40</span>
-          <button id="fullscreenBtn" style="margin-left:8px; padding:8px 12px; font-size:13px;">⤢ Fullscreen</button>
-        </div>
-        <div style="margin-top:16px; display:flex; align-items:center; gap:12px;">
-          <label for="gainRange" style="font-size:13px; color:#7a6d5f; font-weight:600;">🔊 Audio Gain:</label>
-          <input id="gainRange" type="range" min="0.1" max="5" value="1" step="0.1" />
-          <span id="gainVal" style="width:48px; text-align:right; color:#5a5a5a; font-weight:600;">1.0x</span>
-        </div>
-      </div>
+  <div id="dock" class="chrome">
+    <button class="icon" id="settingsBtn" title="Settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+    </button>
+    <div class="rec">
+      <button id="startBtn" title="Start" aria-label="Start"></button>
+      <button id="stopBtn" title="Stop" aria-label="Stop" disabled></button>
+    </div>
+    <button class="icon" id="fullscreenBtn" title="Fullscreen" aria-label="Fullscreen">
+      <svg class="enter" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      <svg class="exit" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+    </button>
+    <div class="panel" id="panel">
+      <div class="row"><label for="qualityRange">Quality</label><input id="qualityRange" type="range" min="10" max="100" value="40" step="1" /><span id="qualityVal" class="val">40</span></div>
+      <div class="row"><label for="gainRange">Gain</label><input id="gainRange" type="range" min="0.1" max="5" value="1" step="0.1" /><span id="gainVal" class="val">1.0x</span></div>
     </div>
   </div>
 
@@ -292,14 +164,12 @@
     const gainVal = document.getElementById('gainVal');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const processedWrap = document.getElementById('processedWrap');
+    const dock = document.getElementById('dock');
 
     // ================= backend resolution =================
-    // Normally the FastAPI backend serves this page (same origin). When the
-    // frontend is served by a separate dev server (e.g. `npm run dev` runs
-    // live-server on :5500), we probe /health and fall back to the backend
-    // on http://localhost:8000. Can be overridden manually with ?backend=
-    // e.g. index.html?backend=localhost:9000
-    let backendBase = '';   // '' = same origin
+    // Same origin by default; falls back to http://localhost:8000 when served
+    // by a dev server. Override with ?backend=localhost:9000
+    let backendBase = '';
 
     function backendHost() {
       return backendBase ? backendBase.replace(/^https?:\/\//, '').replace(/\/+$/, '') : window.location.host;
@@ -323,13 +193,10 @@
         console.log('[BACKEND] Using explicit backend:', backendBase);
         return;
       }
-      if (await healthOk('')) {
-        backendBase = '';
-        return;
-      }
+      if (await healthOk('')) { backendBase = ''; return; }
       if (await healthOk('http://localhost:8000')) {
         backendBase = 'http://localhost:8000';
-        console.log('[BACKEND] Same origin is not the FastAPI backend; using dev backend at', backendBase);
+        console.log('[BACKEND] Using dev backend at', backendBase);
         return;
       }
       backendBase = '';
@@ -338,14 +205,14 @@
     // ================= state =================
     let stream = null;
     let ws = null;
-    let running = false;               // user wants the pipeline active
+    let running = false;
     let audioContext = null;
     let mediaSource = null;
     let audioWorkletNode = null;
     let scriptNode = null;
     let captureCanvas = null;
     let captureCtx = null;
-    let captureTimer = null;           // interval fallback
+    let captureTimer = null;
     let reconnectTimer = null;
     let reconnectAttempts = 0;
 
@@ -353,9 +220,8 @@
     let responseCount = 0;
     let droppedFrames = 0;
     let pendingFrames = 0;
-    const MAX_PENDING = 2;             // stop sending while we're this far behind
+    const MAX_PENDING = 2;
 
-    // quality slider controls both client send quality (0.01-1.0) and server encode quality (10-100)
     let clientSendQuality = parseInt(qualityRange.value, 10) / 100.0;
     let serverEncodeQuality = parseInt(qualityRange.value, 10);
     let audioGain = parseFloat(gainRange.value);
@@ -373,17 +239,14 @@
     }
 
     function updateStats() {
-      statsText.textContent = `Frames sent: ${frameCount} | Responses: ${responseCount}` +
-        (droppedFrames ? ` | Dropped (busy): ${droppedFrames}` : '');
+      statsText.textContent = (frameCount || responseCount)
+        ? `${frameCount} sent · ${responseCount} received` + (droppedFrames ? ` · ${droppedFrames} dropped` : '')
+        : '';
     }
 
     function updateMeterText() {
       if (!meterText) return;
-      if (meterLevelDb <= -100) {
-        meterText.textContent = 'Waiting for microphone…';
-      } else {
-        meterText.textContent = `${Math.round(meterLevelDb)} dB`;
-      }
+      meterText.textContent = meterLevelDb <= -100 ? '—' : `${Math.round(meterLevelDb)} dB`;
     }
 
     // ================= sliders =================
@@ -416,138 +279,55 @@
 
     // ================= fullscreen =================
     function updateFullscreenButton() {
-      const isFs = !!document.fullscreenElement || processedWrap.classList.contains('fs-manual');
-      fullscreenBtn.textContent = isFs ? '⤡ Exit' : '⤢ Fullscreen';
-    }
-
-    function enterManualFullscreen() {
-      processedWrap.classList.add('fs-manual');
-      document.documentElement.style.overflow = 'hidden';
-    }
-
-    function exitManualFullscreen() {
-      processedWrap.classList.remove('fs-manual');
-      document.documentElement.style.overflow = '';
+      const isFs = !!document.fullscreenElement;
+      fullscreenBtn.classList.toggle('is-fs', isFs);
+      fullscreenBtn.title = isFs ? 'Exit fullscreen' : 'Fullscreen';
     }
 
     fullscreenBtn.addEventListener('click', async () => {
-      // Try native fullscreen first; fall back to manual full-viewport mode
-      // (some browsers/extensions block requestFullscreen).
       try {
-        if (!document.fullscreenElement) {
-          const p = processedWrap.requestFullscreen ? processedWrap.requestFullscreen() : null;
-          if (p && typeof p.then === 'function') {
-            await Promise.race([p, new Promise(r => setTimeout(r, 300))]);
-          }
-          if (document.fullscreenElement !== processedWrap) {
-            enterManualFullscreen();
-          }
-        } else {
-          await document.exitFullscreen();
-        }
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
       } catch (err) {
         console.error('[FS] Fullscreen toggle failed:', err);
-        document.fullscreenElement ? document.exitFullscreen() : enterManualFullscreen();
       }
       updateFullscreenButton();
     });
-
-    document.addEventListener('fullscreenchange', () => {
-      if (document.fullscreenElement === processedWrap) {
-        processedWrap.classList.add('fs');
-      } else {
-        processedWrap.classList.remove('fs');
-      }
-      updateFullscreenButton();
-    });
-
-    // Escape exits manual fullscreen as well
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && processedWrap.classList.contains('fs-manual')) {
-        exitManualFullscreen();
-        updateFullscreenButton();
-      }
-    });
-
-    processed.addEventListener('click', async () => {
-      try {
-        if (!document.fullscreenElement) {
-          await processedWrap.requestFullscreen();
-        }
-      } catch (err) {
-        // ignore
-      }
-    });
+    document.addEventListener('fullscreenchange', updateFullscreenButton);
 
     // ================= audio meter =================
+    let dispLevel = 0, dispPeak = 0;
     function drawAudioMeter() {
       const ctx = audioMeter.getContext('2d');
-      const width = audioMeter.width;
-      const height = audioMeter.height;
-      ctx.clearRect(0, 0, width, height);
+      const w = audioMeter.width, h = audioMeter.height;
+      const norm = (db) => Math.max(0, Math.min(1, ((Number.isFinite(db) ? db : -100) + 60) / 60));
+      const t = norm(meterLevelDb), p = norm(meterPeakDb);
+      dispLevel += (t - dispLevel) * (t > dispLevel ? 0.35 : 0.08);   // fast attack, slow release
+      dispPeak += (p - dispPeak) * 0.12;
 
-      const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, '#3b2b2b');
-      gradient.addColorStop(0.5, '#1b181d');
-      gradient.addColorStop(1, '#0b0a0d');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
-
-      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-      ctx.lineWidth = 1;
-      for (let i = 1; i < 6; i++) {
-        const y = 18 + (i * (height - 36) / 5);
-        ctx.beginPath();
-        ctx.moveTo(18, y);
-        ctx.lineTo(width - 18, y);
-        ctx.stroke();
-      }
-
-      const segments = 18;
-      const minDb = -60;
-      const maxDb = 0;
-      const levelDb = Number.isFinite(meterLevelDb) ? meterLevelDb : -100;
-      const peakDb = Number.isFinite(meterPeakDb) ? meterPeakDb : -100;
-
-      for (let i = 0; i < segments; i++) {
-        const thresholdDb = maxDb - ((i / (segments - 1)) * (maxDb - minDb));
-        const isActive = levelDb >= thresholdDb;
-        const barHeight = (height - 40) / segments;
-        const x = 24 + (i % 2) * 12;
-        const y = 20 + i * barHeight;
-        const w = width - 48 - (i % 2) * 12;
-        const h = barHeight - 6;
-        ctx.fillStyle = isActive ? (thresholdDb < -12 ? '#61ffb8' : thresholdDb < -6 ? '#ffd15f' : '#ff6b6b') : 'rgba(255,255,255,0.08)';
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(x, y, w, h, 6);
-        } else {
-          ctx.rect(x, y, w, h);
-        }
-        ctx.fill();
-      }
-
-      const levelY = 20 + ((maxDb - Math.max(minDb, Math.min(maxDb, levelDb))) / (maxDb - minDb)) * (height - 40);
-      ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-      ctx.lineWidth = 2;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(255,255,255,0.14)';
       ctx.beginPath();
-      ctx.moveTo(12, levelY);
-      ctx.lineTo(width - 12, levelY);
-      ctx.stroke();
+      if (ctx.roundRect) ctx.roundRect(0, 0, w, h, w / 2); else ctx.rect(0, 0, w, h);
+      ctx.fill();
 
-      const peakY = 20 + ((maxDb - Math.max(minDb, Math.min(maxDb, peakDb))) / (maxDb - minDb)) * (height - 40);
-      ctx.strokeStyle = 'rgba(255, 107, 107, 0.9)';
+      const g = ctx.createLinearGradient(0, h, 0, 0);
+      g.addColorStop(0, '#fff'); g.addColorStop(0.85, '#fff'); g.addColorStop(0.95, '#ff6b6b');
+      const fh = Math.max(w, dispLevel * h);
+      ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.moveTo(12, peakY);
-      ctx.lineTo(width - 12, peakY);
-      ctx.stroke();
+      if (ctx.roundRect) ctx.roundRect(0, h - fh, w, fh, w / 2); else ctx.rect(0, h - fh, w, fh);
+      ctx.fill();
 
+      if (dispPeak > 0.03) {
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillRect(0, Math.max(0, h - dispPeak * h - 2), w, 2);
+      }
       meterAnimationFrame = window.requestAnimationFrame(drawAudioMeter);
     }
 
     // ================= websocket =================
     function notifyServerSettings() {
-      // Server-side per-connection settings reset on every (re)connect.
       sendControl({ type: 'audio_info', sampleRate: (audioContext && audioContext.sampleRate) ? audioContext.sampleRate : 44100 });
       sendControl({ type: 'jpeg_quality', value: serverEncodeQuality });
       sendControl({ type: 'audio_gain', value: audioGain });
@@ -587,7 +367,6 @@
           return;
         }
 
-        // JSON control replies from the server
         if (data[0] === '{' || data[0] === '"') {
           try {
             const obj = JSON.parse(data);
@@ -598,8 +377,6 @@
                 : obj.detail === 'processing_failed' ? 'A frame failed to process on the server.'
                 : (obj.detail || 'Server error.');
               console.warn('[WS] Server error:', detail);
-            } else if (obj.type === 'pong') {
-              // liveness ack, nothing to show
             }
           } catch (err) {
             console.warn('[WS] Unknown JSON message:', err);
@@ -610,18 +387,15 @@
 
         processed.src = data;
         if (responseCount % 5 === 0) {
-          updateStatus(`Processing - Frames: ${frameCount}, Responses: ${responseCount}`);
+          updateStatus('Processing');
           updateStats();
         }
       };
 
       socket.onclose = () => {
-        if (ws !== socket) return;   // a newer socket replaced this one
+        if (ws !== socket) return;
         ws = null;
-        if (!running) {
-          // stopEverything() owns the message in this case
-          return;
-        }
+        if (!running) return;
         scheduleReconnect();
       };
 
@@ -641,11 +415,8 @@
 
     // ================= audio capture =================
     function handleAudioChunk(input) {
-      // Signal meter (RMS -> dB with peak hold)
       let sumSquares = 0;
-      for (let i = 0; i < input.length; i++) {
-        sumSquares += input[i] * input[i];
-      }
+      for (let i = 0; i < input.length; i++) sumSquares += input[i] * input[i];
       const rms = Math.sqrt(sumSquares / input.length);
       const db = rms > 0 ? 20 * Math.log10(rms) : -100;
       meterLevelDb = Math.max(-60, Math.min(0, db));
@@ -666,8 +437,7 @@
     }
 
     async function setupAudioCapture() {
-      // Preferred: AudioWorklet (runs off the main thread, no dropped audio
-      // when the UI thread is busy). Fallback: deprecated ScriptProcessor.
+      // AudioWorklet preferred; ScriptProcessor fallback.
       const workletCode = `
         class MicCapture extends AudioWorkletProcessor {
           process(inputs) {
@@ -699,17 +469,15 @@
       scriptNode = audioContext.createScriptProcessor(4096, 1, 1);
       scriptNode.onaudioprocess = (e) => {
         const input = e.inputBuffer.getChannelData(0);
-        handleAudioChunk(new Float32Array(input));   // copy: buffer is reused
+        handleAudioChunk(new Float32Array(input));
       };
       mediaSource.connect(scriptNode);
-      // ScriptProcessor only bothers to fire when it reaches the destination.
       scriptNode.connect(audioContext.destination);
     }
 
     async function startCamera() {
       updateStatus('Requesting camera and microphone...');
 
-      // require both video and microphone audio
       stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 640 }, height: { ideal: 480 } },
         audio: {
@@ -728,14 +496,10 @@
       meterLevelDb = -100;
       meterPeakDb = -100;
       updateMeterText();
-      if (!meterAnimationFrame) {
-        drawAudioMeter();
-      }
+      if (!meterAnimationFrame) drawAudioMeter();
 
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
+      if (audioContext.state === 'suspended') await audioContext.resume();
       mediaSource = audioContext.createMediaStreamSource(stream);
       await setupAudioCapture();
     }
@@ -745,8 +509,7 @@
       if (!running || !video.videoWidth) return;
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-      // Backpressure: skip this frame if the server is still catching up,
-      // but keep checking every tick so we recover instantly.
+      // Backpressure: skip while the server is catching up.
       if (pendingFrames > MAX_PENDING) {
         droppedFrames++;
         if (droppedFrames % 30 === 1) updateStats();
@@ -762,9 +525,7 @@
       try {
         const dataUrl = captureCtx.canvas.toDataURL('image/jpeg', clientSendQuality);
         ws.send(dataUrl);
-        if (frameCount % 30 === 0) {
-          updateStats();
-        }
+        if (frameCount % 30 === 0) updateStats();
       } catch (err) {
         console.error('[CAPTURE] Send error:', err);
         pendingFrames = Math.max(0, pendingFrames - 1);
@@ -776,8 +537,6 @@
       captureCanvas = document.createElement('canvas');
       captureCtx = captureCanvas.getContext('2d');
 
-      // requestVideoFrameCallback captures exactly when a new camera frame is
-      // ready (less waste, steadier pacing than a 33 ms timer).
       if (video.requestVideoFrameCallback) {
         const loop = () => {
           if (!running) return;
@@ -786,7 +545,7 @@
         };
         video.requestVideoFrameCallback(loop);
       } else {
-        captureTimer = setInterval(captureFrame, 33); // ~30 FPS fallback
+        captureTimer = setInterval(captureFrame, 33);
       }
     }
 
@@ -813,8 +572,8 @@
         stream = null;
       }
       video.srcObject = null;
-      processed.src = '';
-      exitManualFullscreen();
+      processed.removeAttribute('src');
+      document.body.classList.remove('on');
       updateFullscreenButton();
 
       frameCount = 0;
@@ -833,6 +592,8 @@
       stopBtn.disabled = false;
 
       running = true;
+      document.body.classList.add('on');
+      wake();
       frameCount = 0;
       responseCount = 0;
       droppedFrames = 0;
@@ -841,8 +602,6 @@
 
       try {
         await startCamera();
-        // Find the backend before connecting (same origin in production,
-        // :8000 when the frontend is served by a dev server).
         await resolveBackend();
         connectWs();
         startCaptureLoop();
@@ -850,6 +609,7 @@
         console.error('[CAMERA]', err);
         updateStatus('Camera error: ' + err.message, true);
         running = false;
+        document.body.classList.remove('on');
         startBtn.disabled = false;
         stopBtn.disabled = true;
       }
@@ -861,10 +621,115 @@
       stopBtn.disabled = true;
     });
 
+    // ================= slider fill =================
+    function paintRange(el) {
+      el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+    }
+    [qualityRange, gainRange].forEach((el) => {
+      paintRange(el);
+      el.addEventListener('input', () => paintRange(el));
+    });
+
+    // ================= settings panel =================
+    const settingsBtn = document.getElementById('settingsBtn');
+    const panel = document.getElementById('panel');
+    function setPanel(open) {
+      panel.classList.toggle('open', open);
+      settingsBtn.classList.toggle('on', open);
+    }
+    settingsBtn.addEventListener('click', () => setPanel(!panel.classList.contains('open')));
+    document.addEventListener('pointerdown', (e) => {
+      if (!panel.contains(e.target) && !settingsBtn.contains(e.target)) setPanel(false);
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setPanel(false); });
+
+    // ================= idle chrome =================
+    let hideTimer = null;
+    function wake() {
+      document.body.classList.remove('idle');
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => {
+        const busy = dock.matches(':hover') || dock.contains(document.activeElement) || panel.classList.contains('open');
+        if (running && !busy) document.body.classList.add('idle');
+      }, 2500);
+    }
+    ['mousemove', 'keydown', 'touchstart', 'pointerdown'].forEach((ev) =>
+      document.addEventListener(ev, wake, { passive: true }));
+
+    // ================= camera preview: drag anywhere, minimize to a side =================
+    const pip = document.getElementById('pip');
+    const pipMinBtn = document.getElementById('pipMin');
+    const EDGE_TAB = 34;
+    let pipX = 0, pipY = 64, pipMin = null, drag = null;
+
+    function placePip() {
+      const w = pip.offsetWidth, h = pip.offsetHeight;
+      pipY = Math.max(12, Math.min(pipY, window.innerHeight - h - 12));
+      if (pipMin) {
+        pip.style.left = (pipMin === 'l' ? -(w - EDGE_TAB) : window.innerWidth - EDGE_TAB) + 'px';
+      } else {
+        pipX = Math.max(12, Math.min(pipX, window.innerWidth - w - 12));
+        pip.style.left = pipX + 'px';
+      }
+      pip.style.top = pipY + 'px';
+      pip.classList.toggle('min', !!pipMin);
+      pip.dataset.side = pipMin || '';
+      pip.dataset.half = (pip.offsetLeft + w / 2 < window.innerWidth / 2) ? 'l' : 'r';
+    }
+
+    pip.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.pip-min')) return;
+      pip.setPointerCapture(e.pointerId);
+      drag = { sx: e.clientX, sy: e.clientY, ox: pip.offsetLeft, oy: pip.offsetTop, moved: false };
+      pip.style.transition = 'none';
+      pip.classList.add('dragging');
+    });
+    pip.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+      if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+      if (!drag.moved) return;
+      pip.style.left = (drag.ox + dx) + 'px';
+      pip.style.top = (drag.oy + dy) + 'px';
+    });
+    function endDrag() {
+      if (!drag) return;
+      const d = drag;
+      drag = null;
+      pip.style.transition = '';
+      pip.classList.remove('dragging');
+      if (!d.moved) {                       // plain click on the side tab restores it
+        if (pipMin) { pipMin = null; placePip(); }
+        return;
+      }
+      const left = pip.offsetLeft, w = pip.offsetWidth;
+      pipY = pip.offsetTop;
+      if (left < -w * 0.4) pipMin = 'l';                         // dragged off the left edge
+      else if (left + w > window.innerWidth + w * 0.4) pipMin = 'r';   // ...or the right edge
+      else { pipMin = null; pipX = left; }
+      placePip();
+    }
+    pip.addEventListener('pointerup', endDrag);
+    pip.addEventListener('pointercancel', endDrag);
+
+    pipMinBtn.addEventListener('click', () => {
+      pipMin = pip.dataset.half === 'l' ? 'l' : 'r';
+      placePip();
+    });
+    window.addEventListener('resize', placePip);
+    pipX = window.innerWidth - pip.offsetWidth - 22;
+    placePip();
+
+    // ================= meter size =================
+    function sizeMeter() { audioMeter.height = Math.max(80, Math.round(window.innerHeight * 0.34)); }
+    sizeMeter();
+    window.addEventListener('resize', sizeMeter);
+
     // ================= init =================
     updateStatus('Ready. Click Start to begin.');
     updateStats();
     updateMeterText();
+    updateFullscreenButton();
     drawAudioMeter();
   </script>
 </body>
