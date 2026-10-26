@@ -6,11 +6,12 @@ Protocol over a single WebSocket (/ws):
   Float32 microphone PCM. Both directions use raw JPEG bytes for binary
   clients (no base64 overhead, no data-URL parse/serialize).
 - client -> server text payload:   base64 / data-URL JPEG frame (legacy) or
-  JSON control messages (`audio_info`, `jpeg_quality`, `audio_gain`, `ping`)
+  JSON control messages (`audio_info`, `jpeg_quality`, `audio_gain`, `ping`,
+  `integration_start`, `integration_stop`, `integration_device_action`)
 - server -> client: raw JPEG bytes for frames that arrived binary; a
   data-URL text frame for frames that arrived as text (legacy clients keep
   working unchanged); JSON control replies otherwise (`status`, `error`,
-  `pong`).
+  `pong`, integration status).
 
 Binary classification needs no protocol negotiation: a payload that starts
 with the JPEG SOI marker (``FF D8``) is a frame, otherwise it is treated as
@@ -30,6 +31,12 @@ import logging
 import os
 import urllib.request
 import urllib.error
+
+try:
+    import tinytuya
+    TINYTUA_AVAILABLE = True
+except ImportError:
+    TINYTUA_AVAILABLE = False
 
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = (
     "rtsp_transport;tcp|"
@@ -487,6 +494,48 @@ async def websocket_endpoint(websocket: WebSocket):
                 if mtype == "ping":
                     await send_json(websocket, {"type": "pong"})
                     continue
+                if mtype == "integration_start":
+                    # Start an integration
+                    integration_type = obj.get("type")
+                    device_id = obj.get("device_id")
+                    if integration_type == "tuya" and device_id:
+                        # Start Tuya integration
+                        try:
+                            client = tinytuya.Device(
+                                dev_id=device_id,
+                                ip=None,
+                                local_key=None,
+                                version=3.3,
+                                overwrite=True
+                            )
+                            # Scan for device
+                            logger.info("[INTEGRATION] Started Tuya integration for device %s", device_id)
+                            await send_json(websocket, {"type": "status", "detail": "integration_started", "integration": "tuya"})
+                        except Exception as e:
+                            logger.warning("[INTEGRATION] Tuya start failed: %s", e)
+                            await send_json(websocket, {"type": "error", "detail": "integration_failed"})
+                    elif integration_type == "google_home":
+                        logger.info("[INTEGRATION] Started Google Home integration")
+                        await send_json(websocket, {"type": "status", "detail": "integration_started", "integration": "google_home"})
+                    elif integration_type == "wifi":
+                        logger.info("[INTEGRATION] Started WiFi integration")
+                        await send_json(websocket, {"type": "status", "detail": "integration_started", "integration": "wifi"})
+                    continue
+                if mtype == "integration_stop":
+                    # Stop an integration
+                    integration_type = obj.get("type")
+                    logger.info("[INTEGRATION] Stopped %s integration", integration_type)
+                    await send_json(websocket, {"type": "status", "detail": "integration_stopped", "integration": integration_type})
+                    continue
+                if mtype == "integration_device_action":
+                    # Device-specific action
+                    integration_type = obj.get("integration_type")
+                    device_id = obj.get("device_id")
+                    action = obj.get("action")
+                    payload = obj.get("payload", {})
+                    logger.info("[INTEGRATION] Action %s on %s: %s", action, device_id, payload)
+                    await send_json(websocket, {"type": "status", "detail": "action_ack", "integration": integration_type, "device": device_id, "action": action})
+                    continue
                 if mtype == "camera_source":
                     source_type = obj.get("source")
                     camera_url = obj.get("url")
@@ -597,6 +646,32 @@ async def websocket_endpoint(websocket: WebSocket):
         if rtsp_task is not None:
             rtsp_task.cancel()
         logger.info("[WS] Session ended (%s) frames=%d", client, frame_count)
+
+
+if TINYTUA_AVAILABLE:
+    # Tuya device scanner helper
+    def scan_tuya_devices():
+        """Scan for Tuya devices on the local network.
+        
+        Returns a list of discovered Tuya devices with their info.
+        Each device dict contains: id, address, name, etc.
+        """
+        devices = []
+        try:
+            # Use tinytuya's scan function to discover devices
+            scan_results = tinytuya.scan(timeout=30)
+            for device_id, device_info in scan_results.items():
+                device = {
+                    'id': device_id,
+                    'address': device_info.get('ip', 'unknown'),
+                    'version': device_info.get('version', 'unknown'),
+                    'name': device_info.get('name', 'Unknown Device'),
+                    'model': device_info.get('model', 'unknown'),
+                }
+                devices.append(device)
+        except Exception as e:
+            logger.warning("[TUYA] Scan error: %s", e)
+        return devices
 
 
 if __name__ == "__main__":
