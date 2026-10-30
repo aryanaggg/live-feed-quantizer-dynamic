@@ -1,0 +1,170 @@
+--- server.orig.py	2026-10-26 15:40:31.015608269 +0000
++++ server.py	2026-10-26 15:40:48.780962298 +0000
+@@ -28,6 +28,8 @@
+ import json
+ import logging
+ import os
++import re
++import threading
+ import urllib.request
+ import urllib.error
+ 
+@@ -316,6 +318,50 @@
+     logger.info("[CAMERA] IP camera loop stopped for %s", camera_url)
+ 
+ 
++def _mask_url(url: str) -> str:
++    """Hide the password in rtsp://user:pass@host/... before logging it."""
++    return re.sub(r"(://[^:/@]+:)[^/]*@", r"\1***@", url)
++
++
++class _RtspCap:
++    """cv2.VideoCapture wrapper. Every blocking call (open / grab / release) is meant to
++    run in a worker thread, serialised by a lock (VideoCapture is not thread-safe)."""
++
++    def __init__(self, url: str):
++        self.lock = threading.Lock()
++        try:  # OpenCV >= 4.5.2: bound how long open/read may block
++            self.cap = cv2.VideoCapture(
++                url, cv2.CAP_FFMPEG,
++                [cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000, cv2.CAP_PROP_READ_TIMEOUT_MSEC, 5000],
++            )
++        except TypeError:
++            self.cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
++        try:
++            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
++        except Exception:
++            pass
++
++    def opened(self) -> bool:
++        return self.cap.isOpened()
++
++    def read_latest(self):
++        """Drop stale buffered frames, return the newest frame (or None)."""
++        with self.lock:
++            got = False
++            for _ in range(3):
++                if not self.cap.grab():
++                    break
++                got = True
++            if not got:
++                return None
++            ok, frame = self.cap.retrieve()
++            return frame if ok else None
++
++    def close(self) -> None:
++        with self.lock:
++            self.cap.release()
++
++
+ async def _rtsp_stream_loop(
+     websocket: WebSocket,
+     quantizer: AudioPaletteQuantizer,
+@@ -326,32 +372,52 @@
+     audio_gain: float,
+     raw: bool = False,
+ ):
+-    """Background task: open an RTSP stream via OpenCV, quantize frames, push over WS."""
+-    logger.info("[CAMERA] RTSP stream loop started for %s", rtsp_url)
+-    cap = None
+-    try:
+-        cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+-        if not cap.isOpened():
+-            logger.warning("[CAMERA] Failed to open RTSP stream: %s", rtsp_url)
+-            await send_json(websocket, {"type": "error", "detail": "rtsp_open_failed"})
+-            return
+-        try:
+-            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+-            cap.set(cv2.CAP_PROP_FPS, 25)
+-        except Exception:
+-            pass
++    """Background task: open an RTSP stream via OpenCV and push frames over WS.
+ 
++    All blocking OpenCV calls run in worker threads, so a dead or slow camera can no
++    longer freeze the event loop. "camera_connected" is sent only after the first real
++    frame; open failures / dropped streams are reported and retried.
++    """
++    logger.info("[CAMERA] RTSP stream loop started for %s", _mask_url(rtsp_url))
++    loop = asyncio.get_running_loop()
++    rc = None
++    announced = False
++    misses = 0
++    try:
+         while not stop_event.is_set():
+-            try:
+-                for _ in range(3):
+-                    if not cap.grab():
+-                        break
+-                ret, frame = await asyncio.to_thread(cap.retrieve)
+-                if not ret or frame is None:
+-                    await asyncio.sleep(0.01)
++            if rc is None:
++                try:
++                    rc = await asyncio.wait_for(asyncio.to_thread(_RtspCap, rtsp_url), timeout=15)
++                except asyncio.TimeoutError:
++                    rc = None
++                if rc is None or not rc.opened():
++                    if rc is not None:
++                        loop.run_in_executor(None, rc.close)
++                        rc = None
++                    logger.warning("[CAMERA] Failed to open RTSP stream: %s", _mask_url(rtsp_url))
++                    await send_json(websocket, {"type": "error", "detail": "rtsp_open_failed"})
++                    await asyncio.sleep(3)
+                     continue
++                misses = 0
++                announced = False
++
++            try:
++                frame = await asyncio.to_thread(rc.read_latest)
++                if frame is None:
++                    misses += 1
++                    if misses >= 5:
++                        logger.warning("[CAMERA] RTSP stream lost, reopening")
++                        loop.run_in_executor(None, rc.close)
++                        rc = None
++                        await send_json(websocket, {"type": "error", "detail": "rtsp_stream_lost"})
++                    else:
++                        await asyncio.sleep(0.05)
++                    continue
++                misses = 0
++                if not announced:
++                    announced = True
++                    await send_json(websocket, {"type": "status", "detail": "camera_connected"})
+ 
+-                # Encode frame to JPEG for processing pipeline
+                 ok, buf = cv2.imencode(
+                     ".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality]
+                 )
+@@ -377,9 +443,9 @@
+                 await asyncio.sleep(0.5)
+                 continue
+     finally:
+-        if cap is not None:
+-            cap.release()
+-        logger.info("[CAMERA] RTSP stream loop stopped for %s", rtsp_url)
++        if rc is not None:
++            loop.run_in_executor(None, rc.close)   # waits for any in-flight grab, off the loop
++        logger.info("[CAMERA] RTSP stream loop stopped for %s", _mask_url(rtsp_url))
+ 
+ 
+ @app.websocket("/ws")
+@@ -533,8 +599,7 @@
+                                 lambda: latest_audio, audio_gain, raw=raw_cam,
+                             )
+                         )
+-                        logger.info("[CAMERA] Switched to RTSP stream: %s", camera_url)
+-                        await send_json(websocket, {"type": "status", "detail": "camera_connected"})
++                        logger.info("[CAMERA] Switched to RTSP stream: %s", _mask_url(camera_url))
+                     elif source_type == "onvif" and camera_url:
+                         rtsp_stop = asyncio.Event()
+                         camera_source = {"type": "onvif", "url": camera_url}
+@@ -545,8 +610,7 @@
+                                 lambda: latest_audio, audio_gain, raw=raw_cam,
+                             )
+                         )
+-                        logger.info("[CAMERA] Switched to ONVIF stream: %s", camera_url)
+-                        await send_json(websocket, {"type": "status", "detail": "camera_connected"})
++                        logger.info("[CAMERA] Switched to ONVIF stream: %s", _mask_url(camera_url))
+                     elif source_type == "local":
+                         camera_source = None
+                         logger.info("[CAMERA] Switched to local camera")
