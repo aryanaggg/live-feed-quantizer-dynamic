@@ -1,0 +1,350 @@
+{
+  "audio_to_palette/music_visualizer.py": {
+    "mtime": 1792921032.9803035,
+    "seen": 1793140487.5347846,
+    "ast_hash": "66af7ffb536b518cdd29ec89d7eb4f39",
+    "semantic_hash": "66af7ffb536b518cdd29ec89d7eb4f39"
+  },
+  "capture_audio.py": {
+    "mtime": 1779130355.6992538,
+    "seen": 1793140487.5348115,
+    "ast_hash": "3976d2a9de76e15d785dfa5d7d68dd3e",
+    "semantic_hash": "3976d2a9de76e15d785dfa5d7d68dd3e"
+  },
+  "capture_camera.py": {
+    "mtime": 1779131796.9294665,
+    "seen": 1793140487.5348206,
+    "ast_hash": "dec87bb31a0e15c6949d60701a1789e8",
+    "semantic_hash": "dec87bb31a0e15c6949d60701a1789e8"
+  },
+  "capture_mic_and_playback.py": {
+    "mtime": 1764268785.1579275,
+    "seen": 1793140487.5348272,
+    "ast_hash": "27b83455cbf2e63242e39e3026eeb151",
+    "semantic_hash": "27b83455cbf2e63242e39e3026eeb151"
+  },
+  "check_devices.py": {
+    "mtime": 1763639853.0699284,
+    "seen": 1793140487.5348337,
+    "ast_hash": "63c2b044fca115783133c911c2a6f837",
+    "semantic_hash": "63c2b044fca115783133c911c2a6f837"
+  },
+  "image_quantizer/quantizer.py": {
+    "mtime": 1792926029.2980766,
+    "seen": 1793140487.5348403,
+    "ast_hash": "5939aeaeb0fe7d05ff2924a68eccfe1f",
+    "semantic_hash": "5939aeaeb0fe7d05ff2924a68eccfe1f"
+  },
+  "main.py": {
+    "mtime": 1792921085.5773048,
+    "seen": 1793140487.5348492,
+    "ast_hash": "e9eb5f74b56524c59fc9a46f32ed099d",
+    "semantic_hash": "e9eb5f74b56524c59fc9a46f32ed099d"
+  },
+  "package.json": {
+    "mtime": 1793010157.8275032,
+    "seen": 1793140487.5348556,
+    "ast_hash": "abfbbfcdc6a97ba6ef54f1fa497139b2",
+    "semantic_hash": "abfbbfcdc6a97ba6ef54f1fa497139b2"
+  },
+  "railway.json": {
+    "mtime": 1764983881.5350595,
+    "seen": 1793140487.5348628,
+    "ast_hash": "aa72aa5f755aceea11435e242878ec42",
+    "semantic_hash": "aa72aa5f755aceea11435e242878ec42"
+  },
+  "server.py": {
+    "mtime": 1793141470.4633918,
+    "seen": 1793141506.2766573,
+    "ast_hash": "963f5b79d439daad8672dd1e69a7dd10",
+    "semantic_hash": "963f5b79d439daad8672dd1e69a7dd10"
+  },
+  "sound_device_processor.py": {
+    "mtime": 1792925783.10355,
+    "seen": 1793140487.5348754,
+    "ast_hash": "1f0fc06091d4b41dc57b0481d6bc3be2",
+    "semantic_hash": "1f0fc06091d4b41dc57b0481d6bc3be2"
+  },
+  "test_audio.py": {
+    "mtime": 1763635371.6884801,
+    "seen": 1793140487.5348835,
+    "ast_hash": "e429f0291208c366ee34249dbde704fb",
+    "semantic_hash": "e429f0291208c366ee34249dbde704fb"
+  },
+  "tests/test_music_visualizer.py": {
+    "mtime": 1792921196.6017795,
+    "seen": 1793140487.5348895,
+    "ast_hash": "4edb775993e72758b962269381e9c9a0",
+    "semantic_hash": "4edb775993e72758b962269381e9c9a0"
+  },
+  "tests/test_quantizer.py": {
+    "mtime": 1792921186.5657885,
+    "seen": 1793140487.5348969,
+    "ast_hash": "43abbea2160a643e222261e62bb8ea78",
+    "semantic_hash": "43abbea2160a643e222261e62bb8ea78"
+  },
+  "tests/test_server_ws.py": {
+    "mtime": 1792921297.79577,
+    "seen": 1793140487.534904,
+    "ast_hash": "68a5e02ec145b9421915b5b0fc072ba5",
+    "semantic_hash": "68a5e02ec145b9421915b5b0fc072ba5"
+  },
+  "tests/test_sound_device_processor.py": {
+    "mtime": 1792921262.2994537,
+    "seen": 1793140487.534911,
+    "ast_hash": "6d5e7c634f6db0570f4bf05e5db7c8b3",
+    "semantic_hash": "6d5e7c634f6db0570f4bf05e5db7c8b3"
+  },
+  "audio_to_palette/carpe_diem.mp3": {
+    "mtime": 1763508846.1208737,
+    "seen": 1793140487.5349178,
+    "ast_hash": "7ac966db5ea45ba153912fbf562ebe3d",
+    "semantic_hash": "7ac966db5ea45ba153912fbf562ebe3d"
+  },
+  "audio_to_palette/palpal.mp3": {
+    "mtime": 1763632827.7953167,
+    "seen": 1793140487.534925,
+    "ast_hash": "62a940534baa5d8fc836b269b08b9153",
+    "semantic_hash": "62a940534baa5d8fc836b269b08b9153"
+  },
+  "audio_to_palette/song1.mp3": {
+    "mtime": 1763508846.1208737,
+    "seen": 1793140487.5349312,
+    "ast_hash": "7ac966db5ea45ba153912fbf562ebe3d",
+    "semantic_hash": "7ac966db5ea45ba153912fbf562ebe3d"
+  },
+  "audio_to_palette/song2.mp3": {
+    "mtime": 1763525984.3531709,
+    "seen": 1793140487.534938,
+    "ast_hash": "d3e18be187e6df9eec832a952abd93c6",
+    "semantic_hash": "d3e18be187e6df9eec832a952abd93c6"
+  },
+  ".kilo/plans/1792978418951-integrations-hub-plan.md": {
+    "mtime": 1793010157.8196726,
+    "seen": 1793141998.2873838,
+    "ast_hash": "433f701922279b57fd12d3b3a12cd859",
+    "semantic_hash": ""
+  },
+  ".kilo/plans/graphify-code-fixes-plan.md": {
+    "mtime": 1793141605.9299045,
+    "seen": 1793141998.2873945,
+    "ast_hash": "fd1c8fd2ce2babba47954b822028abee",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/LICENSE.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2874064,
+    "ast_hash": "3b83ef96387f14655fc854ddc3c6bd57",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/SKILL.md": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.287414,
+    "ast_hash": "6a54f6048b29be7541bed8cd2ab2b8b3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/ArsenalSC-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.287422,
+    "ast_hash": "345f19309c2dc8607d734c30e051664c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/BigShoulders-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.28743,
+    "ast_hash": "c5ebfdbbfa972487ea94a4db69ee8914",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/Boldonse-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.287438,
+    "ast_hash": "7bd3233e237d19d652cb660691920d20",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/BricolageGrotesque-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2874446,
+    "ast_hash": "ee3ce9efb67e11fe3b6a62e4900bc555",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/CrimsonPro-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2874522,
+    "ast_hash": "4a4f7a2be38164be02aa668f84543244",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/DMMono-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2874599,
+    "ast_hash": "d2584f0d22f35b27d8f4c782053631a9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/EricaOne-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.287467,
+    "ast_hash": "a038b40c42a1efdc4506d75501ef6f58",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/GeistMono-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.287473,
+    "ast_hash": "c8c23c432b256d956f16fdf608970e0c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/Gloock-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.287479,
+    "ast_hash": "9cb80dc9ab77374b493cd67238533983",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/IBMPlexMono-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2874851,
+    "ast_hash": "04554dfd8311edf8c4097bafd3cee236",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/InstrumentSans-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2874918,
+    "ast_hash": "ae35f9ec28cdd3173132ca66f75abefb",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/Italiana-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2874997,
+    "ast_hash": "cb3ac536b2d71bb7ff0abee2b2f1b97d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/JetBrainsMono-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2875082,
+    "ast_hash": "1c09e67ab89d3a2e874aac38159e300f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/Jura-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2875164,
+    "ast_hash": "ee6488b6b59e8bd888150585ff9e1392",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/LibreBaskerville-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2875247,
+    "ast_hash": "d3637266186b9fc074209b7f28fa0265",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/Lora-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.287533,
+    "ast_hash": "7142f337b3a2b0b010bae5220f122e17",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/NationalPark-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.287541,
+    "ast_hash": "1a4a79cd92a34c9c9e24123ec723451e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/NothingYouCouldDo-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2875493,
+    "ast_hash": "0e13f0a092df3e89b472a79b211ab882",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/Outfit-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2875574,
+    "ast_hash": "24816d50643b2e823d980d023a943861",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/PixelifySans-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2875662,
+    "ast_hash": "5e9b76d8baafe165566bce17ecc172d6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/PoiretOne-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2875721,
+    "ast_hash": "2acbd904f2abc47c3c9c61e1c3bcab0f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/RedHatMono-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2875786,
+    "ast_hash": "95100adabd2420f83d495f29be9fd366",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/Silkscreen-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.287585,
+    "ast_hash": "fff2b203cd8209a0bd13e8cd52132701",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/SmoochSans-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2875912,
+    "ast_hash": "343b1bb17a720a167fc4c38f2154de48",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/Tektur-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2875974,
+    "ast_hash": "bd40a53e3a3d520bac7972de2a3ad903",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/WorkSans-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2876039,
+    "ast_hash": "b1c37ab93d12fdbef80883f6d46f4bb6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canvas-design/canvas-fonts/YoungSerif-OFL.txt": {
+    "mtime": 1790622291.0,
+    "seen": 1793141998.2876103,
+    "ast_hash": "22056c5aa62fddabe4a12201175b5f23",
+    "semantic_hash": ""
+  },
+  "RAILWAY_DEPLOY.md": {
+    "mtime": 1764983328.7441742,
+    "seen": 1793141998.287617,
+    "ast_hash": "14403e2b1b3c21b365bb5da93f12af26",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1792922815.1637082,
+    "seen": 1793141998.2876234,
+    "ast_hash": "ae44867095ae75e13d702b89a7bc0b99",
+    "semantic_hash": ""
+  },
+  "frontend/index.html": {
+    "mtime": 1793139531.9111035,
+    "seen": 1793141998.2876315,
+    "ast_hash": "a07201f42f40d41f20336c624791d06a",
+    "semantic_hash": ""
+  },
+  "requirements-dev.txt": {
+    "mtime": 1792921323.9082444,
+    "seen": 1793141998.2876399,
+    "ast_hash": "30b7ffb8a311b9ebf5c7282303844e3d",
+    "semantic_hash": ""
+  },
+  "requirements.txt": {
+    "mtime": 1792921169.161234,
+    "seen": 1793141998.2876477,
+    "ast_hash": "a08ba0ee3fe9cfbb8ff1fd3b2a3d6d5c",
+    "semantic_hash": ""
+  },
+  "image_quantizer/photo1.jpg": {
+    "mtime": 1736081994.3095958,
+    "seen": 1793141998.2876542,
+    "ast_hash": "5533c9590123599813bbe5baa856313a",
+    "semantic_hash": ""
+  },
+  "package-lock.json": {
+    "mtime": 1793009194.6156607,
+    "seen": 1793141998.2877104,
+    "ast_hash": "5acd3d50716a09cd8a0634a3144cda56",
+    "semantic_hash": ""
+  }
+}

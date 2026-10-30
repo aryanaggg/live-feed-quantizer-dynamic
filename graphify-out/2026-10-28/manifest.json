@@ -1,0 +1,122 @@
+{
+  "audio_to_palette/music_visualizer.py": {
+    "mtime": 1792921032.9803035,
+    "seen": 1793140487.5347846,
+    "ast_hash": "66af7ffb536b518cdd29ec89d7eb4f39",
+    "semantic_hash": "66af7ffb536b518cdd29ec89d7eb4f39"
+  },
+  "capture_audio.py": {
+    "mtime": 1779130355.6992538,
+    "seen": 1793140487.5348115,
+    "ast_hash": "3976d2a9de76e15d785dfa5d7d68dd3e",
+    "semantic_hash": "3976d2a9de76e15d785dfa5d7d68dd3e"
+  },
+  "capture_camera.py": {
+    "mtime": 1779131796.9294665,
+    "seen": 1793140487.5348206,
+    "ast_hash": "dec87bb31a0e15c6949d60701a1789e8",
+    "semantic_hash": "dec87bb31a0e15c6949d60701a1789e8"
+  },
+  "capture_mic_and_playback.py": {
+    "mtime": 1764268785.1579275,
+    "seen": 1793140487.5348272,
+    "ast_hash": "27b83455cbf2e63242e39e3026eeb151",
+    "semantic_hash": "27b83455cbf2e63242e39e3026eeb151"
+  },
+  "check_devices.py": {
+    "mtime": 1763639853.0699284,
+    "seen": 1793140487.5348337,
+    "ast_hash": "63c2b044fca115783133c911c2a6f837",
+    "semantic_hash": "63c2b044fca115783133c911c2a6f837"
+  },
+  "image_quantizer/quantizer.py": {
+    "mtime": 1792926029.2980766,
+    "seen": 1793140487.5348403,
+    "ast_hash": "5939aeaeb0fe7d05ff2924a68eccfe1f",
+    "semantic_hash": "5939aeaeb0fe7d05ff2924a68eccfe1f"
+  },
+  "main.py": {
+    "mtime": 1792921085.5773048,
+    "seen": 1793140487.5348492,
+    "ast_hash": "e9eb5f74b56524c59fc9a46f32ed099d",
+    "semantic_hash": "e9eb5f74b56524c59fc9a46f32ed099d"
+  },
+  "package.json": {
+    "mtime": 1793010157.8275032,
+    "seen": 1793140487.5348556,
+    "ast_hash": "abfbbfcdc6a97ba6ef54f1fa497139b2",
+    "semantic_hash": "abfbbfcdc6a97ba6ef54f1fa497139b2"
+  },
+  "railway.json": {
+    "mtime": 1764983881.5350595,
+    "seen": 1793140487.5348628,
+    "ast_hash": "aa72aa5f755aceea11435e242878ec42",
+    "semantic_hash": "aa72aa5f755aceea11435e242878ec42"
+  },
+  "server.py": {
+    "mtime": 1793141470.4633918,
+    "seen": 1793141506.2766573,
+    "ast_hash": "963f5b79d439daad8672dd1e69a7dd10",
+    "semantic_hash": "963f5b79d439daad8672dd1e69a7dd10"
+  },
+  "sound_device_processor.py": {
+    "mtime": 1792925783.10355,
+    "seen": 1793140487.5348754,
+    "ast_hash": "1f0fc06091d4b41dc57b0481d6bc3be2",
+    "semantic_hash": "1f0fc06091d4b41dc57b0481d6bc3be2"
+  },
+  "test_audio.py": {
+    "mtime": 1763635371.6884801,
+    "seen": 1793140487.5348835,
+    "ast_hash": "e429f0291208c366ee34249dbde704fb",
+    "semantic_hash": "e429f0291208c366ee34249dbde704fb"
+  },
+  "tests/test_music_visualizer.py": {
+    "mtime": 1792921196.6017795,
+    "seen": 1793140487.5348895,
+    "ast_hash": "4edb775993e72758b962269381e9c9a0",
+    "semantic_hash": "4edb775993e72758b962269381e9c9a0"
+  },
+  "tests/test_quantizer.py": {
+    "mtime": 1792921186.5657885,
+    "seen": 1793140487.5348969,
+    "ast_hash": "43abbea2160a643e222261e62bb8ea78",
+    "semantic_hash": "43abbea2160a643e222261e62bb8ea78"
+  },
+  "tests/test_server_ws.py": {
+    "mtime": 1792921297.79577,
+    "seen": 1793140487.534904,
+    "ast_hash": "68a5e02ec145b9421915b5b0fc072ba5",
+    "semantic_hash": "68a5e02ec145b9421915b5b0fc072ba5"
+  },
+  "tests/test_sound_device_processor.py": {
+    "mtime": 1792921262.2994537,
+    "seen": 1793140487.534911,
+    "ast_hash": "6d5e7c634f6db0570f4bf05e5db7c8b3",
+    "semantic_hash": "6d5e7c634f6db0570f4bf05e5db7c8b3"
+  },
+  "audio_to_palette/carpe_diem.mp3": {
+    "mtime": 1763508846.1208737,
+    "seen": 1793140487.5349178,
+    "ast_hash": "7ac966db5ea45ba153912fbf562ebe3d",
+    "semantic_hash": "7ac966db5ea45ba153912fbf562ebe3d"
+  },
+  "audio_to_palette/palpal.mp3": {
+    "mtime": 1763632827.7953167,
+    "seen": 1793140487.534925,
+    "ast_hash": "62a940534baa5d8fc836b269b08b9153",
+    "semantic_hash": "62a940534baa5d8fc836b269b08b9153"
+  },
+  "audio_to_palette/song1.mp3": {
+    "mtime": 1763508846.1208737,
+    "seen": 1793140487.5349312,
+    "ast_hash": "7ac966db5ea45ba153912fbf562ebe3d",
+    "semantic_hash": "7ac966db5ea45ba153912fbf562ebe3d"
+  },
+  "audio_to_palette/song2.mp3": {
+    "mtime": 1763525984.3531709,
+    "seen": 1793140487.534938,
+    "ast_hash": "d3e18be187e6df9eec832a952abd93c6",
+    "semantic_hash": "d3e18be187e6df9eec832a952abd93c6"
+  }
+}

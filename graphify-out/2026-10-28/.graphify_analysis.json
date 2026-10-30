@@ -1,0 +1,363 @@
+{
+  "communities": {
+    "0": [
+      "asyncio",
+      "base64",
+      "event",
+      "fastapi",
+      "fastapi_middleware_cors",
+      "fastapi_responses",
+      "fastapi_staticfiles",
+      "get",
+      "json",
+      "logging",
+      "os",
+      "server",
+      "server_camera_proxy",
+      "server_clamp",
+      "server_decode_jpeg_bytes",
+      "server_decode_jpeg_payload",
+      "server_decode_jpeg_payload_91d6ed",
+      "server_handle_frame",
+      "server_health",
+      "server_ip_camera_loop",
+      "server_looks_like_audio",
+      "server_mask_url",
+      "server_rationale_1221",
+      "server_rationale_2",
+      "server_rationale_345",
+      "server_rationale_377",
+      "server_rationale_393",
+      "server_rationale_417",
+      "server_rationale_45",
+      "server_rationale_457",
+      "server_rationale_52",
+      "server_rationale_58",
+      "server_rationale_634",
+      "server_rationale_648",
+      "server_rationale_727",
+      "server_rationale_80",
+      "server_rationale_858",
+      "server_render_frame",
+      "server_root",
+      "server_rtsp_stream_loop",
+      "server_scan_tuya_devices",
+      "server_send_json",
+      "server_websocket_endpoint",
+      "tinytuya",
+      "uvicorn",
+      "websocket"
+    ],
+    "1": [
+      "sound_device_processor_audiopalettequantizer",
+      "sound_device_processor_audiopalettequantizer_extract_palette",
+      "sound_device_processor_audiopalettequantizer_init",
+      "sound_device_processor_audiopalettequantizer_process",
+      "sound_device_processor_audiopalettequantizer_reset",
+      "sound_device_processor_audiopalettequantizer_sanitize_sample_rate",
+      "sound_device_processor_audiopalettequantizer_set_sample_rate",
+      "sound_device_processor_audiopalettequantizer_to_float_mono",
+      "sound_device_processor_audiopalettequantizer_update_palette",
+      "sound_device_processor_clamp",
+      "sound_device_processor_process_frame",
+      "sound_device_processor_rationale_129",
+      "sound_device_processor_rationale_156",
+      "sound_device_processor_rationale_42",
+      "sound_device_processor_rationale_99",
+      "tests_test_sound_device_processor",
+      "tests_test_sound_device_processor_frame",
+      "tests_test_sound_device_processor_test_instances_have_isolated_state",
+      "tests_test_sound_device_processor_test_invalid_audio_chunk_is_ignored_not_fatal",
+      "tests_test_sound_device_processor_test_quantizes_with_audio_and_output_uses_palette",
+      "tests_test_sound_device_processor_test_returns_none_for_silent_audio_before_any_palette",
+      "tests_test_sound_device_processor_test_returns_none_without_audio",
+      "tests_test_sound_device_processor_test_sample_rate_is_sanitized",
+      "tests_test_sound_device_processor_test_silence_reuses_last_palette",
+      "tests_test_sound_device_processor_test_skip_audio_legacy_flag_uses_cached_palette",
+      "tests_test_sound_device_processor_tone"
+    ],
+    "2": [
+      "image_quantizer_quantizer",
+      "image_quantizer_quantizer_build_lut",
+      "image_quantizer_quantizer_get_lut",
+      "image_quantizer_quantizer_nearest_indices",
+      "image_quantizer_quantizer_prepare_palette",
+      "image_quantizer_quantizer_quantize_array",
+      "image_quantizer_quantizer_quantize_bgr",
+      "image_quantizer_quantizer_quantize_image",
+      "image_quantizer_quantizer_quantize_with_lut",
+      "image_quantizer_quantizer_rationale_108",
+      "image_quantizer_quantizer_rationale_123",
+      "image_quantizer_quantizer_rationale_2",
+      "image_quantizer_quantizer_rationale_35",
+      "image_quantizer_quantizer_rationale_96",
+      "ndarray",
+      "numpy",
+      "pil",
+      "sound_device_processor",
+      "sound_device_processor_rationale_2",
+      "tests_test_quantizer",
+      "tests_test_quantizer_test_quantize_array_maps_to_nearest_color",
+      "tests_test_quantizer_test_quantize_array_output_is_always_in_palette",
+      "tests_test_quantizer_test_quantize_image_accepts_path",
+      "tests_test_quantizer_test_quantize_image_accepts_pil_image"
+    ],
+    "3": [
+      "capture_mic_and_playback",
+      "capture_mic_and_playback_adjust_channels",
+      "capture_mic_and_playback_format_device_entry",
+      "capture_mic_and_playback_list_audio_devices",
+      "capture_mic_and_playback_main",
+      "capture_mic_and_playback_monitorapp",
+      "capture_mic_and_playback_monitorapp_first_input_index",
+      "capture_mic_and_playback_monitorapp_init",
+      "capture_mic_and_playback_monitorapp_on_close",
+      "capture_mic_and_playback_monitorapp_parse_selection_index",
+      "capture_mic_and_playback_monitorapp_refresh_devices",
+      "capture_mic_and_playback_monitorapp_start_stream",
+      "capture_mic_and_playback_monitorapp_start_stream_callback",
+      "capture_mic_and_playback_monitorapp_stop_stream",
+      "capture_mic_and_playback_rationale_27",
+      "capture_mic_and_playback_rationale_46",
+      "sounddevice",
+      "sys",
+      "test_audio",
+      "test_audio_callback",
+      "time",
+      "tkinter",
+      "traceback"
+    ],
+    "4": [
+      "capture_audio",
+      "capture_audio_audio_loop",
+      "capture_audio_audioprocessor",
+      "capture_audio_audioprocessor_close",
+      "capture_audio_audioprocessor_get_latest_audio",
+      "capture_audio_audioprocessor_init",
+      "capture_audio_audioprocessor_update",
+      "capture_audio_latest_audio_chunk",
+      "capture_audio_rationale_43",
+      "capture_audio_start_audio",
+      "capture_audio_stop_audio",
+      "check_devices",
+      "main",
+      "main_process_frame",
+      "main_rationale_2",
+      "main_rationale_21",
+      "pyaudio",
+      "threading"
+    ],
+    "5": [
+      "capture_camera",
+      "capture_camera_get_screen_size",
+      "capture_camera_rationale_15",
+      "capture_camera_start_camera",
+      "ctypes",
+      "cv2",
+      "fastapi_testclient",
+      "tests_test_server_ws",
+      "tests_test_server_ws_connect",
+      "tests_test_server_ws_jpeg_data_url",
+      "tests_test_server_ws_test_full_frame_flow_returns_quantized_jpeg",
+      "tests_test_server_ws_test_health_endpoint",
+      "tests_test_server_ws_test_invalid_json_returns_no_crash",
+      "tests_test_server_ws_test_missing_audio_returns_json_waiting_status",
+      "tests_test_server_ws_test_ping_pong",
+      "tests_test_server_ws_test_root_serves_frontend",
+      "tests_test_server_ws_tone"
+    ],
+    "6": [
+      "audio_to_palette_music_visualizer",
+      "audio_to_palette_music_visualizer_extract_colors_from_audio",
+      "audio_to_palette_music_visualizer_rationale_1",
+      "audio_to_palette_music_visualizer_rationale_17",
+      "colorsys",
+      "pytest",
+      "tests_test_music_visualizer",
+      "tests_test_music_visualizer_test_all_rgb_colors_are_ints",
+      "tests_test_music_visualizer_test_empty_audio_returns_no_chunks",
+      "tests_test_music_visualizer_test_energy_consistency_tone_vs_silence_headers",
+      "tests_test_music_visualizer_test_requires_sample_rate_with_array",
+      "tests_test_music_visualizer_test_returns_n_colors",
+      "tests_test_music_visualizer_test_silent_audio_still_returns_equal_energy_palette",
+      "tests_test_music_visualizer_tone"
+    ],
+    "7": [
+      "package",
+      "package_description",
+      "package_devdependencies",
+      "package_devdependencies_concurrently",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_backend",
+      "package_scripts_dev",
+      "package_scripts_frontend",
+      "package_scripts_start",
+      "package_scripts_test",
+      "package_version",
+      "ref_concurrently"
+    ],
+    "8": [
+      "railway",
+      "railway_build",
+      "railway_build_builder",
+      "railway_deploy",
+      "railway_deploy_numreplicas",
+      "railway_deploy_restartpolicymaxretries",
+      "railway_schema"
+    ],
+    "9": [
+      "server_rationale_541",
+      "server_rationale_562",
+      "server_rtspcap",
+      "server_rtspcap_close",
+      "server_rtspcap_init",
+      "server_rtspcap_opened",
+      "server_rtspcap_read_latest"
+    ]
+  },
+  "cohesion": {
+    "0": 0.07342995169082125,
+    "1": 0.1753846153846154,
+    "2": 0.1956521739130435,
+    "3": 0.13043478260869565,
+    "4": 0.1503267973856209,
+    "5": 0.20588235294117646,
+    "6": 0.27472527472527475,
+    "7": 0.15384615384615385,
+    "8": 0.2857142857142857,
+    "9": 0.2857142857142857
+  },
+  "gods": [
+    {
+      "id": "sound_device_processor_audiopalettequantizer",
+      "label": "AudioPaletteQuantizer",
+      "degree": 24
+    },
+    {
+      "id": "server_websocket_endpoint",
+      "label": "websocket_endpoint()",
+      "degree": 16
+    },
+    {
+      "id": "audio_to_palette_music_visualizer_extract_colors_from_audio",
+      "label": "extract_colors_from_audio()",
+      "degree": 13
+    },
+    {
+      "id": "server_rtsp_stream_loop",
+      "label": "_rtsp_stream_loop()",
+      "degree": 11
+    },
+    {
+      "id": "capture_mic_and_playback_monitorapp",
+      "label": "MonitorApp",
+      "degree": 9
+    },
+    {
+      "id": "server_handle_frame",
+      "label": "_handle_frame()",
+      "degree": 9
+    },
+    {
+      "id": "image_quantizer_quantizer_quantize_array",
+      "label": "quantize_array()",
+      "degree": 9
+    },
+    {
+      "id": "server_ip_camera_loop",
+      "label": "_ip_camera_loop()",
+      "degree": 8
+    },
+    {
+      "id": "tests_test_sound_device_processor_frame",
+      "label": "_frame()",
+      "degree": 8
+    },
+    {
+      "id": "tests_test_server_ws_test_full_frame_flow_returns_quantized_jpeg",
+      "label": "test_full_frame_flow_returns_quantized_jpeg()",
+      "degree": 8
+    }
+  ],
+  "surprises": [
+    {
+      "source": "test_instances_have_isolated_state()",
+      "target": "AudioPaletteQuantizer",
+      "source_files": [
+        "tests/test_sound_device_processor.py",
+        "sound_device_processor.py"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories"
+    },
+    {
+      "source": "test_invalid_audio_chunk_is_ignored_not_fatal()",
+      "target": "AudioPaletteQuantizer",
+      "source_files": [
+        "tests/test_sound_device_processor.py",
+        "sound_device_processor.py"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories"
+    },
+    {
+      "source": "test_quantizes_with_audio_and_output_uses_palette()",
+      "target": "AudioPaletteQuantizer",
+      "source_files": [
+        "tests/test_sound_device_processor.py",
+        "sound_device_processor.py"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories"
+    },
+    {
+      "source": "test_returns_none_for_silent_audio_before_any_palette()",
+      "target": "AudioPaletteQuantizer",
+      "source_files": [
+        "tests/test_sound_device_processor.py",
+        "sound_device_processor.py"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories"
+    },
+    {
+      "source": "test_returns_none_without_audio()",
+      "target": "AudioPaletteQuantizer",
+      "source_files": [
+        "tests/test_sound_device_processor.py",
+        "sound_device_processor.py"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `AudioPaletteQuantizer` connect `numpy` to `server.py`, `main.py`, `capture_mic_and_playback.py`?",
+      "why": "High betweenness centrality (0.165) - this node is a cross-community bridge."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `server.py` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.07342995169082125 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `_RtspCap` connect `_RtspCap` to `server.py`?",
+      "why": "High betweenness centrality (0.054) - this node is a cross-community bridge."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `AudioPaletteQuantizer` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.13043478260869565 - nodes in this community are weakly interconnected."
+    }
+  ]
+}
