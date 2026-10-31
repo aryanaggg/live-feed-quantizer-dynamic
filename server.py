@@ -68,6 +68,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from sound_device_processor import AudioPaletteQuantizer
+from signaling import router as signaling_router
 
 logger = logging.getLogger("live_feed_quantizer")
 
@@ -106,6 +107,7 @@ def _clamp(value, lo, hi):
 
 
 app = FastAPI(title="Live Feed Quantizer", version="2.0")
+app.include_router(signaling_router)
 
 # CORS: explicit origin allowlist instead of a wildcard.  The list is
 # configurable (LFQ_ALLOWED_ORIGINS) so a hosted deployment can add its own

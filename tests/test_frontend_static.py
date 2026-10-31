@@ -25,9 +25,9 @@ def _index_text() -> str:
 
 
 def _inline_script() -> str:
-    match = re.search(r"(?s)<script>(.*?)</script>", _index_text())
-    assert match, "frontend/index.html must contain one inline script"
-    return match.group(1)
+    scripts = re.findall(r"(?s)<script>(.*?)</script>", _index_text())
+    assert scripts, "frontend/index.html must contain inline scripts"
+    return "\n;\n".join(scripts)
 
 
 def test_frontend_is_still_a_single_file():
@@ -43,6 +43,11 @@ def test_source_abstraction_is_present():
         "class AudioSource",
         "class LocalMicSource",
         "class SilentAudioSource",
+        "class RemoteDeviceSource",
+        "class RemoteAudioSource",
+        "RTCPeerConnection",
+        "createRemoteRoom",
+        "joinAsGuest",
         "backoffDelay",
         "resolveBackend",
         "lfq_sources_v2",
