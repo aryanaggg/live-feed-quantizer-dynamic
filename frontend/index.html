@@ -5,18 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Live Feed Quantizer</title>
 <style>
-:root{--lvl:0;--e:cubic-bezier(.22,1,.36,1);--s:cubic-bezier(.34,1.56,.64,1);--mut:rgba(255,255,255,.55)}
+:root{--lvl:0;--e:cubic-bezier(.22,1,.36,1);--s:cubic-bezier(.34,1.56,.64,1);--mut:rgba(255,255,255,.55);--line:rgba(255,255,255,.16);--ok:#5ee3a1;--warn:#ffb86b;--bad:#ff6b6b}
 *{margin:0;box-sizing:border-box}
 html,body{height:100%;background:#0a0a0a;color:#f4f4f8;font:13px/1.4 Inter,system-ui,-apple-system,'Segoe UI',sans-serif;overflow:hidden}
 body.idle{cursor:none}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
-button:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:2px}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid #fff;outline-offset:2px}
+input,select{font:inherit}
 
 #grid{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 body.ov #grid{z-index:2;mix-blend-mode:screen;pointer-events:none}
 #cv{position:fixed;z-index:1;inset:0;width:100%;height:100%;opacity:0;transition:opacity .9s var(--e)}
 body.on #cv{opacity:1}
-#hint{position:fixed;inset:0;display:grid;place-items:center;font-size:15px;color:var(--mut);pointer-events:none;transition:opacity .5s;animation:pulse 3.4s ease-in-out infinite}
+#hint{position:fixed;inset:0;display:grid;place-items:center;font-size:15px;color:var(--mut);pointer-events:none;transition:opacity .5s;animation:pulse 3.4s ease-in-out infinite;text-align:center;padding:24px}
 body.on #hint{opacity:0;animation:none}
 @keyframes pulse{50%{opacity:.45}}
 
@@ -26,13 +27,15 @@ body.idle .ui{opacity:0;transform:translateY(14px)}
 body.idle #top{transform:translateY(-14px)}
 body.idle.err .ui{opacity:1;transform:none}
 
-#top{position:fixed;top:16px;left:16px;z-index:5;display:flex;align-items:center;gap:10px;padding:9px 16px;border-radius:99px}
-#dot{width:7px;height:7px;border-radius:50%;background:var(--mut);transition:background .4s}
-body.on #dot{background:#5ee3a1;animation:ping 1.8s ease-out infinite}
-body.err #dot{background:#ff6b6b;animation:none}
+#top{position:fixed;top:16px;left:16px;z-index:5;display:flex;align-items:center;gap:10px;padding:9px 16px;border-radius:99px;max-width:calc(100vw - 32px)}
+#dot{width:7px;height:7px;border-radius:50%;background:var(--mut);transition:background .4s;flex:none}
+body.on #dot{background:var(--ok);animation:ping 1.8s ease-out infinite}
+body.err #dot{background:var(--bad);animation:none}
 @keyframes ping{0%{box-shadow:0 0 0 0 rgba(94,227,161,.6)}100%{box-shadow:0 0 0 9px rgba(94,227,161,0)}}
-#st,#fps{color:var(--mut);font-variant-numeric:tabular-nums}
+#st,#fps,#srcState{color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.err #st{color:#ff8b8b}
+#srcState{display:none}
+@media(min-width:760px){#srcState{display:inline}}
 
 #dock{position:fixed;left:50%;bottom:22px;translate:-50% 0;z-index:6;display:flex;align-items:center;gap:10px;padding:9px;border-radius:34px;max-width:96vw;
   box-shadow:0 12px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.28)}
@@ -54,13 +57,13 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke
 body.on #sw{display:flex}
 #sw span{width:8px;height:30px;border-radius:4px}
 
-#tune,#devices{position:fixed;left:50%;bottom:104px;translate:-50% 0;z-index:6;width:min(330px,90vw);display:grid;gap:14px;padding:18px;border-radius:24px;
+#tune,#sources,#integrations-panel{position:fixed;left:50%;bottom:104px;translate:-50% 0;z-index:7;width:min(420px,94vw);max-height:min(74vh,660px);overflow:auto;display:grid;gap:14px;padding:18px;border-radius:24px;
   opacity:0;transform:translateY(10px) scale(.94);transform-origin:50% 100%;pointer-events:none;transition:opacity .25s,transform .55s var(--s)}
-#tune.open,#devices.open{opacity:1;transform:none;pointer-events:auto}
-body.idle #tune.open,body.idle #devices.open{opacity:0}
-#devices label{display:grid;gap:6px;color:var(--mut);font-size:12px}
-#devices select{width:100%;padding:9px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:inherit;font:inherit}
-#devices select:focus-visible{outline:2px solid #fff;outline-offset:2px}
+#tune{width:min(330px,90vw)}
+#tune.open,#sources.open,#integrations-panel.open{opacity:1;transform:none;pointer-events:auto}
+body.idle #tune.open,body.idle #sources.open,body.idle #integrations-panel.open{opacity:0}
+#sources label,#tune label,#integrations-panel label{display:grid;gap:6px;color:var(--mut);font-size:12px}
+#sources select,#tune select,#integrations-panel select,#sources input[type=text],#sources input[type=password],#integrations-panel input{width:100%;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.35);color:inherit}
 #devNote{color:var(--mut);font-size:11px}
 .ic.off{opacity:.4}
 .row{display:grid;grid-template-columns:62px 1fr 38px;align-items:center;gap:10px}
@@ -70,7 +73,49 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;heigh
 input[type=range]::-moz-range-thumb{width:15px;height:15px;border:0;border-radius:50%;background:#fff}
 input[type=range]:active::-webkit-slider-thumb{transform:scale(1.35)}
 
-@media(max-width:640px){body.on #sw,#fps{display:none}.ic{width:38px;height:38px}#mr,#gd,#fs,#integration{display:none}.seg button{padding:9px 11px}}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.panel-head h3{font-size:15px;font-weight:600}
+.field{display:grid;gap:6px}
+.field>span,.field>label{color:var(--mut);font-size:12px}
+.inline{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.12);border:1px solid var(--line);transition:background .2s,transform .2s}
+.btn:hover{background:rgba(255,255,255,.22)}.btn:active{transform:scale(.97)}
+.btn.primary{background:#fff;color:#000;border-color:#fff}
+.btn.danger{color:#ffb4b4;border-color:rgba(255,107,107,.4)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.sm{padding:5px 9px;font-size:11px;border-radius:8px}
+.hintline{color:var(--mut);font-size:11px;line-height:1.5}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:99px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;background:rgba(255,255,255,.12);color:var(--mut);white-space:nowrap}
+.badge.live{background:rgba(94,227,161,.18);color:var(--ok)}
+.badge.err{background:rgba(255,107,107,.18);color:var(--bad)}
+.badge.warn{background:rgba(255,184,107,.18);color:var(--warn)}
+.badge.bridge{background:rgba(107,168,255,.18);color:#9cc4ff}
+.list{display:grid;gap:8px}
+.item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.18)}
+.item .meta{display:grid;gap:3px;min-width:0}
+.item .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .sub{color:var(--mut);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tabpane{display:grid;gap:14px}
+.tabpane[hidden]{display:none}
+details{border:1px solid var(--line);border-radius:12px;padding:10px;background:rgba(0,0,0,.14)}
+summary{cursor:pointer;color:var(--mut);font-size:12px}
+details .inner{margin-top:10px;display:grid;gap:10px}
+.mic-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid rgba(255,255,255,.08)}
+.mic-row:first-child{border-top:0}
+.meter{height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:5px}
+.meter>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#5ee3a1,#ffd166,#ff6b6b);border-radius:3px;transition:width .06s linear}
+.checkline{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:12px}
+.checkline input{width:auto}
+.notice{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,184,107,.35);background:rgba(255,184,107,.09);font-size:12px;line-height:1.5;color:#ffd9ad}
+.notice.info{border-color:rgba(107,168,255,.35);background:rgba(107,168,255,.09);color:#cfe3ff}
+.notice.bad{border-color:rgba(255,107,107,.35);background:rgba(255,107,107,.09);color:#ffc4c4}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}
+.codebox{letter-spacing:.24em;font-size:22px;font-weight:700;text-align:center;padding:10px;border-radius:12px;background:rgba(0,0,0,.3);border:1px solid var(--line)}
+.qr{display:grid;place-items:center;padding:10px;background:#fff;border-radius:12px;width:max-content;margin:0 auto}
+.qr canvas{display:block}
+
+@media(max-width:640px){body.on #sw,#fps{display:none}.ic{width:38px;height:38px}#mr,#gd,#fs,#integration{display:none}.seg button{padding:9px 11px}#sources,#tune,#integrations-panel{bottom:92px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -80,27 +125,33 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.35)}
 <video id="vid" playsinline muted style="position:fixed;width:2px;height:2px;opacity:0;pointer-events:none"></video>
 <div id="hint">Press start</div>
 
-<div class="glass ui" id="top"><span id="dot"></span><b>Live Feed Quantizer</b><span id="st">Ready</span><span id="fps"></span></div>
+<div class="glass ui" id="top"><span id="dot"></span><b>Live Feed Quantizer</b><span id="st">Ready</span><span id="srcState"></span><span id="fps"></span></div>
 
 <div class="glass ui" id="tune">
   <div class="row"><label for="sPix">Pixels</label><input id="sPix" type="range" min="2" max="40" step="1" value="10"><output></output></div>
   <div class="row"><label for="sSens">Sense</label><input id="sSens" type="range" min=".3" max="3" step=".1" value="1"><output></output></div>
   <div class="row"><label for="sResp">Flow</label><input id="sResp" type="range" min=".03" max=".5" step=".01" value=".12"><output></output></div>
-  <div class="row"><label>Preset</label><input id="presetName" type="text" placeholder="name" style="flex:1"><button id="presetSave">Save</button></div>
-  <div class="row"><label>Load</label><select id="presetList" style="flex:1"></select><button id="presetLoad">Load</button></div>
+  <div class="row"><label>Preset</label><input id="presetName" type="text" placeholder="name" style="flex:1"><button class="btn sm" id="presetSave">Save</button></div>
+  <div class="row"><label>Load</label><select id="presetList" style="flex:1"></select><button class="btn sm" id="presetLoad">Load</button></div>
 </div>
 
-<div class="glass ui" id="devices">
-  <label>Camera<select id="camSelect"></select></label>
-  <label>Microphone<select id="micSelect"></select></label>
-  <small id="devNote"></small>
+<div class="glass ui" id="sources">
+  <div class="panel-head"><h3>Sources</h3><button class="ic" id="close-sources" title="Close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="seg" id="srcTabs" style="width:100%"></div>
+  <div id="srcTabContent"></div>
+</div>
+
+<div class="glass ui" id="integrations-panel">
+  <div class="panel-head"><h3>Integrations</h3><button class="ic" id="close-integrations" title="Close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="seg" id="integration-tabs" style="width:100%"></div>
+  <div id="integration-tab-content"></div>
 </div>
 
 <div class="glass ui" id="dock">
   <button class="go" id="go" aria-label="Start / stop"><svg class="p" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><svg class="s" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg></button>
   <div class="seg" id="seg"><i class="hl"></i></div>
   <div id="sw"></div>
-  <button class="ic" id="camBtn" title="Camera devices" aria-label="Camera"><svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.2"/></svg></button>
+  <button class="ic" id="srcBtn" title="Sources" aria-label="Sources"><svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.2"/></svg></button>
   <button class="ic" id="micBtn" title="Microphone (mute)" aria-label="Microphone"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button>
   <button class="ic" id="tb" title="Tune" aria-label="Tune"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
   <button class="ic on" id="mr" title="Mirror (M)" aria-label="Mirror"><svg viewBox="0 0 24 24"><path d="M12 3v18M8 7l-5 5 5 5zM16 7l5 5-5 5z"/></svg></button>
@@ -109,98 +160,298 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.35)}
   <button class="ic" id="integration" title="Integrations" aria-label="Integrations"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.5"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1.5"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1.5"/><rect x="14" y="14" width="6.5" height="6.5" rx="1.5"/></svg></button>
 </div>
 
-<div class="glass ui" id="integrations-panel" style="position:fixed;right:22px;bottom:90px;width:320px;max-height:60vh;overflow:auto;padding:16px;z-index:7;opacity:0;pointer-events:none;transform:translateY(10px) scale(.94);transition:opacity .2s ease, transform .2s ease;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-    <h3 style="margin:0;font-size:16px;">Integrations</h3>
-    <button class="ic" id="close-integrations" title="Close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-  </div>
-  <div class="seg" id="integration-tabs" style="width:100%;margin-bottom:12px;"></div>
-  <div id="integration-tab-content"></div>
-</div>
-
 <script>
+/* =========================================================================
+   Live Feed Quantizer — client architecture
+   FrameSource: LocalCamera | RemoteDevice (WebRTC) | BridgeFeed (WS JPEG)
+   AudioSource: local mic | remote track | silent
+   The browser owns the palette and all five WebGL modes for every source.
+   ========================================================================= */
 const $ = s => document.querySelector(s);
 const cv = $('#cv'), vid = $('#vid'), body = document.body;
 const MODES = ['Palette', 'Dither', 'Halftone', 'Gradient', 'Ripple'];
 const PRESETS = Array.from({ length: 5 }, () => ({ pix: 10, sens: 1, resp: 0.12 }));
 let S = PRESETS[0];
-let mode = 0, mirror = 1, ov = false, run = false, stream = null, starting = false;
-const selected = { video: '', audio: '' };   // chosen deviceIds ('' = browser default)
-let micMuted = false, hasMic = false;
+let mode = 0, mirror = 1, ov = false, run = false;
+const selected = { video: '', audio: '' };
+let micMuted = false;
 
-/* ---------- start / stop ---------- */
-function status(msg, err) { $('#st').textContent = msg; body.classList.toggle('err', !!err); }
-async function start() {
-  if (run || starting) return;
-  starting = true;
-  const v = { width: { ideal: 1280 }, height: { ideal: 720 } };
-  if (selected.video) v.deviceId = { exact: selected.video };
-  // AGC / noise suppression off: keeps the real dynamics the palette reacts to.
-  const a = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
-  if (selected.audio) a.deviceId = { exact: selected.audio };
-  try {
-    let s, noMic = false;
+/* ---------- backend resolver (single source of truth) ---------- */
+const BACKEND_PORT = 8001;
+const BRIDGE_PORTS = [8765, 8766, 8767];
+function resolveBackend() {
+  const qp = new URLSearchParams(location.search);
+  const override = qp.get('backend');
+  if (override) {
+    const value = /^https?:\/\//i.test(override) ? override : `http://${override}`;
+    return value.replace(/\/$/, '');
+  }
+  if (location.protocol === 'https:') return location.origin;
+  if (location.port === '5500') return `http://${location.hostname}:${BACKEND_PORT}`;
+  return location.origin;
+}
+function wsURL(path) {
+  const base = resolveBackend();
+  const url = new URL(path, base);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  return url.toString();
+}
+function bridgeURL(port, path = '') {
+  return `http://127.0.0.1:${port}${path}`;
+}
+const BACKEND = resolveBackend();
+
+/* ---------- persistence: schema v2 + legacy migration ---------- */
+const LS_V2 = 'lfq_sources_v2';
+const LS_LEGACY = 'savedCams';
+let store = { v: 2, sources: [], activeId: null, activeAudioDeviceId: null };
+function uid() {
+  return (crypto && crypto.randomUUID) ? crypto.randomUUID() : 's_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+function normalizeSource(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const kind = raw.kind || (raw.source === 'local' ? 'local' : 'network');
+  if (kind === 'local') {
+    return { id: raw.id || uid(), kind: 'local', name: raw.name || 'Local camera', deviceId: raw.deviceId || '', audioDeviceId: raw.audioDeviceId || '' };
+  }
+  if (kind === 'remote') {
+    return { id: raw.id || uid(), kind: 'remote', name: raw.name || 'Remote device', roomCode: raw.roomCode || '', peerId: raw.peerId || '' };
+  }
+  return {
+    id: raw.id || uid(), kind: 'network', name: raw.name || 'Network camera',
+    protocol: raw.protocol || 'rtsp', url: raw.url || '',
+    rememberCredential: !!raw.rememberCredential
+  };
+}
+function loadStore() {
+  let loaded = null;
+  try { loaded = JSON.parse(localStorage.getItem(LS_V2) || 'null'); } catch (e) {}
+  if (loaded && loaded.v === 2 && Array.isArray(loaded.sources)) {
+    store = {
+      v: 2,
+      sources: loaded.sources.map(normalizeSource).filter(Boolean),
+      activeId: loaded.activeId || null,
+      activeAudioDeviceId: loaded.activeAudioDeviceId || null
+    };
+    return;
+  }
+  // Migrate the legacy savedCams array once.
+  let legacy = [];
+  try { legacy = JSON.parse(localStorage.getItem(LS_LEGACY) || '[]'); } catch (e) {}
+  if (Array.isArray(legacy) && legacy.length) {
+    store.sources = legacy.map(cam => normalizeSource({
+      id: cam.id, kind: 'network', name: cam.name || 'Saved camera',
+      protocol: cam.source === 'ip' ? 'ip' : (cam.protocol || cam.source || 'rtsp'),
+      url: cam.url || ''
+    })).filter(Boolean);
+    store.activeId = legacy.find(c => c.id === store.activeId) ? store.activeId : null;
+    saveStore();
+  }
+}
+let saveTimer = 0;
+function saveStore() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(LS_V2, JSON.stringify(store)); } catch (e) {}
+  }, 120);
+}
+function activeSource() {
+  return store.sources.find(s => s.id === store.activeId) || null;
+}
+function upsertSource(src) {
+  const existing = store.sources.findIndex(s => s.id === src.id);
+  if (existing >= 0) store.sources[existing] = { ...store.sources[existing], ...src };
+  else store.sources.push(src);
+  saveStore();
+  return src;
+}
+function removeSource(id) {
+  store.sources = store.sources.filter(s => s.id !== id);
+  if (store.activeId === id) store.activeId = null;
+  saveStore();
+  renderSources();
+}
+
+/* ---------- source state machine ---------- */
+class StateMachine {
+  constructor() { this.state = 'idle'; this.detail = ''; this.listeners = new Set(); }
+  set(state, detail = '') {
+    if (this.state === state && this.detail === detail) return;
+    this.state = state; this.detail = detail;
+    this.listeners.forEach(fn => { try { fn(state, detail); } catch (e) { console.error(e); } });
+  }
+  on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
+}
+function backoffDelay(attempt) { return Math.min(5000, 500 * Math.pow(2, Math.min(attempt, 4))); }
+
+class FrameSource {
+  constructor(id) {
+    this.id = id;
+    this.sm = new StateMachine();
+    this.running = false;
+    this._attempt = 0;
+    this._timer = null;
+  }
+  async start() {
+    if (this.running) return;
+    this.running = true;
+    this._attempt = 0;
+    await this._connect();
+  }
+  stop() {
+    this.running = false;
+    clearTimeout(this._timer);
+    this._timer = null;
+    this._disconnect();
+    this.sm.set('idle');
+  }
+  _scheduleReconnect(err) {
+    if (!this.running) return;
+    const delay = backoffDelay(this._attempt++);
+    this.sm.set('reconnecting', `${err || 'connection lost'} · retry ${(delay / 1000).toFixed(1)}s`);
+    clearTimeout(this._timer);
+    this._timer = setTimeout(() => { if (this.running) this._connect(); }, delay);
+  }
+  _connect() {}
+  _disconnect() {}
+  frame() { return null; }
+  size() { return [0, 0]; }
+  releaseFrame() {}
+  label() { return 'Source'; }
+}
+
+class LocalCameraSource extends FrameSource {
+  constructor(id, deviceId) {
+    super(id);
+    this.deviceId = deviceId || '';
+    this.stream = null;
+    this.video = vid;
+  }
+  async _connect() {
+    this.sm.set('connecting');
     try {
-      s = await navigator.mediaDevices.getUserMedia({ video: v, audio: a });
-    } catch (e) {
-      try {
-        s = await navigator.mediaDevices.getUserMedia({ video: v, audio: true });
-      } catch (e2) {
-        try {
-          s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        } catch (e3) {
-          s = await navigator.mediaDevices.getUserMedia({ video: true }); noMic = true;
-        }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access needs https or localhost');
       }
+      const video = { width: { ideal: 1280 }, height: { ideal: 720 } };
+      if (this.deviceId) video.deviceId = { exact: this.deviceId };
+      const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+      this.stream = stream;
+      const track = stream.getVideoTracks()[0];
+      if (track) {
+        const settings = track.getSettings ? track.getSettings() : {};
+        if (settings.deviceId) { this.deviceId = settings.deviceId; selected.video = settings.deviceId; }
+        track.addEventListener('ended', () => {
+          if (!this.running) return;
+          this._disconnect();
+          this._scheduleReconnect('camera disconnected');
+        });
+      }
+      this.video.srcObject = stream;
+      this.video.muted = true;
+      await this.video.play().catch(() => {});
+      this._attempt = 0;
+      this.sm.set('live');
+      refreshDevices();
+    } catch (err) {
+      this.sm.set('error', errorText(err));
+      const fatal = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+      if (!fatal) this._scheduleReconnect(errorText(err));
     }
-    stream = s; vid.srcObject = s;
-    hasMic = s.getAudioTracks().length > 0;
-    const vt = s.getVideoTracks()[0], at = s.getAudioTracks()[0];
-    if (vt) { const id = (vt.getSettings() || {}).deviceId; if (id) selected.video = id; }
-    if (at) { const id = (at.getSettings() || {}).deviceId; if (id) selected.audio = id; }
-    refreshDevices();
-    // play() can reject when a previous source was just replaced; the frames still arrive.
-    vid.play().catch(() => {});
-    if (s.getAudioTracks().length) {
-      ac = new (window.AudioContext || window.webkitAudioContext)(); await ac.resume();
-      an = ac.createAnalyser(); an.fftSize = 2048; an.smoothingTimeConstant = .4;
-      ac.createMediaStreamSource(s).connect(an);
-      fd = new Uint8Array(an.frequencyBinCount); sr = ac.sampleRate;
-    }
-    run = true; body.classList.add('on'); wake();
-    status(noMic ? 'Live · no mic, palette drifts' : 'Live');
-  } catch (e) {
-    if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; vid.srcObject = null;
-    if (ac) { ac.close(); ac = an = null; }
-    status('Camera error: ' + e.message, true);
-  } finally { starting = false; }
-}
-function stop() {
-  run = false; starting = false; body.classList.remove('on', 'idle');
-  if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; vid.srcObject = null;
-  if (ac) { ac.close(); ac = an = null; } $('#fps').textContent = ''; status('Stopped');
-  micMuted = false; hasMic = false;
-  const mb = $('#micBtn'); if (mb) mb.classList.remove('off');
+  }
+  _disconnect() {
+    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    this.stream = null;
+    if (this.video.srcObject) this.video.srcObject = null;
+  }
+  frame() {
+    return (this.video.readyState >= 2 && this.video.videoWidth) ? this.video : null;
+  }
+  size() { return [this.video.videoWidth || 0, this.video.videoHeight || 0]; }
+  label() { return 'Local camera'; }
 }
 
-$('#go').onclick = () => run ? stop() : start();
+class AudioSource {
+  constructor(id) { this.id = id; this.sm = new StateMachine(); this.analyser = null; }
+  async start() {}
+  stop() {}
+  get isLive() { return this.sm.state === 'live'; }
+}
 
-/* ---------- WebGL: all quantizing happens on the GPU, no server round-trip ---------- */
+class LocalMicSource extends AudioSource {
+  constructor(id, deviceId, opts = {}) {
+    super(id);
+    this.deviceId = deviceId || '';
+    this.opts = opts;
+    this.stream = null;
+    this.ctx = null;
+  }
+  async start() {
+    this.sm.set('connecting');
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Microphone access needs https or localhost');
+      const audio = {
+        echoCancellation: !!this.opts.echoCancellation,
+        noiseSuppression: !!this.opts.noiseSuppression,
+        autoGainControl: !!this.opts.autoGainControl
+      };
+      if (this.opts.sampleRate) audio.sampleRate = { ideal: +this.opts.sampleRate };
+      if (this.deviceId) audio.deviceId = { exact: this.deviceId };
+      const stream = await navigator.mediaDevices.getUserMedia({ audio, video: false });
+      this.stream = stream;
+      const track = stream.getAudioTracks()[0];
+      if (track) {
+        const settings = track.getSettings ? track.getSettings() : {};
+        if (settings.deviceId) { this.deviceId = settings.deviceId; selected.audio = settings.deviceId; }
+      }
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)(this.opts.sampleRate ? { sampleRate: +this.opts.sampleRate } : undefined);
+      await this.ctx.resume().catch(() => {});
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 2048;
+      this.analyser.smoothingTimeConstant = 0.4;
+      this.ctx.createMediaStreamSource(stream).connect(this.analyser);
+      sr = this.ctx.sampleRate;
+      fd = new Uint8Array(this.analyser.frequencyBinCount);
+      this.sm.set('live');
+      refreshDevices();
+    } catch (err) {
+      this.analyser = null;
+      this.sm.set('error', errorText(err));
+    }
+  }
+  stop() {
+    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    this.stream = null;
+    if (this.ctx) { this.ctx.close().catch(() => {}); this.ctx = null; }
+    this.analyser = null;
+    this.sm.set('idle');
+  }
+}
+
+class SilentAudioSource extends AudioSource {
+  async start() { this.sm.set('live', 'no microphone'); }
+}
+
+function errorText(err) {
+  if (!err) return 'Unknown error';
+  if (err.name === 'NotAllowedError') return 'Permission denied';
+  if (err.name === 'NotFoundError') return 'Device not found';
+  if (err.name === 'NotReadableError') return 'Device busy';
+  return err.message || err.name || String(err);
+}
+
+/* ---------- WebGL: all quantizing happens on the GPU ---------- */
 let gl = null;
 try {
   const opts = { antialias: false, alpha: false, powerPreference: 'high-performance' };
-  // The shaders below are GLSL ES 1.00, so prefer a WebGL1 context.
   gl = cv.getContext('webgl', opts) || cv.getContext('webgl2', opts) || cv.getContext('experimental-webgl', opts);
-} catch (e) {
-  // WebGL unavailable - handled below
-}
+} catch (e) {}
 if (!gl) {
   document.querySelector('#go').disabled = true;
   alert('WebGL unavailable. Enable hardware acceleration in your browser settings (chrome://settings/system).');
   throw new Error('No WebGL');
 }
 
-// Initialize WebGL shaders and buffers with error handling
 let prog;
 try {
   const VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
@@ -247,23 +498,13 @@ void main(){
 }`;
   prog = gl.createProgram();
   const vs = gl.createShader(gl.VERTEX_SHADER);
-  gl.shaderSource(vs, VS);
-  gl.compileShader(vs);
-  if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
-    throw new Error('Vertex shader compile error: ' + gl.getShaderInfoLog(vs));
-  }
+  gl.shaderSource(vs, VS); gl.compileShader(vs);
+  if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) throw new Error('Vertex shader compile error: ' + gl.getShaderInfoLog(vs));
   const fs = gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(fs, FS);
-  gl.compileShader(fs);
-  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
-    throw new Error('Fragment shader compile error: ' + gl.getShaderInfoLog(fs));
-  }
-  gl.attachShader(prog, vs);
-  gl.attachShader(prog, fs);
-  gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-    throw new Error('Program link error: ' + gl.getProgramInfoLog(prog));
-  }
+  gl.shaderSource(fs, FS); gl.compileShader(fs);
+  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) throw new Error('Fragment shader compile error: ' + gl.getShaderInfoLog(fs));
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error('Program link error: ' + gl.getProgramInfoLog(prog));
   gl.useProgram(prog);
 } catch (e) {
   console.error('[WEBGL] Initialization error:', e);
@@ -272,7 +513,6 @@ void main(){
   throw e;
 }
 
-/* ---------- WebGL uniforms and setup ---------- */
 const U = {};
 ['uT', 'uR', 'uCov', 'uN', 'uM', 'uPix', 'uTime', 'uBass', 'uHigh', 'uMir'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
 U.uP = gl.getUniformLocation(prog, 'uP[0]');
@@ -285,8 +525,8 @@ const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
 
 /* ---------- audio analysis -> palette ---------- */
 let ac = null, an = null, fd = null, sr = 48000;
-const band = [0, 0, 0], peak = [.1, .1, .1];   // bass / mid / high, auto-normalised per band
-let cent = .4;                                   // spectral centroid (0..1, log scale)
+const band = [0, 0, 0], peak = [.1, .1, .1];
+let cent = .4;
 const N = 7, cur = new Float32Array(24), tgt = new Float32Array(24);
 
 function analyse() {
@@ -297,9 +537,9 @@ function analyse() {
     const i0 = bin(a), i1 = Math.max(bin(b), i0 + 1); let s = 0;
     for (let i = i0; i < i1; i++) s += fd[i];
     const raw = s / (i1 - i0) / 255;
-    peak[k] = Math.max(peak[k] * .997, raw, .05);          // software AGC: reacts the same on quiet or loud mics
+    peak[k] = Math.max(peak[k] * .997, raw, .05);
     const v = Math.min(1, raw / peak[k] * S.sens * (raw > .02 ? 1 : raw / .02));
-    band[k] += (v - band[k]) * (v > band[k] ? .55 : .1);   // fast attack, slow release
+    band[k] += (v - band[k]) * (v > band[k] ? .55 : .1);
   });
   let num = 0, den = 0;
   for (let i = 1, e = bin(8000); i < e; i++) { num += i * fd[i]; den += fd[i]; }
@@ -320,8 +560,7 @@ function updatePalette(t) {
   for (let i = 0; i < N * 3; i++) cur[i] += (tgt[i] - cur[i]) * S.resp;
 }
 
-
-/* ---------- interactive dot-grid background (idle screen) ---------- */
+/* ---------- interactive dot-grid background ---------- */
 const gc = $('#grid'), g2 = gc.getContext('2d');
 const GAP = 26, R = 120, STOPS = [[0, 52, 62, 110], [.25, 47, 95, 176], [.5, 27, 154, 166], [.75, 79, 170, 90], [1, 181, 194, 48]];
 const LUT = Array.from({ length: 64 }, (_, i) => {
@@ -340,7 +579,7 @@ sizeGrid(); addEventListener('resize', sizeGrid);
 addEventListener('pointermove', e => { px = e.clientX; py = e.clientY; lastMove = performance.now(); }, { passive: true });
 document.addEventListener('pointerleave', () => { px = py = -1e4; });
 function drawGrid(now, aud) {
-  if (now - lastMove > 2500) {            // nobody pointing: a virtual cursor wanders so it stays alive
+  if (now - lastMove > 2500) {
     const t = now / 1000; px = gW * (.5 + .32 * Math.sin(t * .45)); py = gH * (.5 + .28 * Math.sin(t * .31 + 1.3));
   }
   g2.setTransform(dpr, 0, 0, dpr, 0, 0); g2.clearRect(0, 0, gW, gH);
@@ -349,13 +588,13 @@ function drawGrid(now, aud) {
     const x = ox + c * GAP, y = oy + r * GAP, i = r * gCols + c;
     const d2 = ((x - px) ** 2 + (y - py) ** 2) / (R * R);
     let tg = Math.exp(-d2 * 1.6);
-    if (aud) {                              // overlay mode: bass ring + mid swell + treble sparkle
+    if (aud) {
       const dc = Math.hypot(x - gW / 2, y - gH / 2), ring = (now * .24) % (Math.hypot(gW, gH) / 2 + 80);
       tg = Math.max(tg, band[0] * Math.exp(-(((dc - ring) / 55) ** 2)) * .95,
         band[1] * .3 * (.5 + .5 * Math.sin(x * .017 + y * .013 + now * .0021)),
         band[2] * ((Math.sin(c * 12.9898 + r * 78.233 + (now * .006 | 0)) * 43758.5453 % 1 + 1) % 1 > .93 ? .8 : 0));
     }
-    gV[i] += (tg - gV[i]) * (tg > gV[i] ? .3 : .045);          // quick grow, slow fade = trail
+    gV[i] += (tg - gV[i]) * (tg > gV[i] ? .3 : .045);
     const v = gV[i], s = 2 + 12 * Math.pow(v, 1.15);
     g2.fillStyle = LUT[Math.min(63, v * 63 | 0)];
     g2.beginPath();
@@ -364,21 +603,56 @@ function drawGrid(now, aud) {
   }
 }
 
-/* ---------- render loop ---------- */
+/* ---------- active sources + render loop ---------- */
+let videoSource = null, audioSource = null;
 const sw = $('#sw'); for (let i = 0; i < N; i++) sw.appendChild(document.createElement('span'));
 let t0 = performance.now(), fN = 0, fT = t0, tick = 0;
+
+function status(msg, err) {
+  $('#st').textContent = msg;
+  body.classList.toggle('err', !!err);
+}
+function syncSourceState() {
+  if (!run) { $('#srcState').textContent = ''; return; }
+  const vs = videoSource ? videoSource.sm.state : 'idle';
+  const as = audioSource ? audioSource.sm.state : 'idle';
+  $('#srcState').textContent = `video ${vs} · audio ${as}`;
+  body.classList.toggle('on', vs === 'live');
+  if (vs === 'error' || as === 'error') {
+    const detail = (videoSource && videoSource.sm.detail) || (audioSource && audioSource.sm.detail) || 'source error';
+    status(detail, true);
+  } else if (vs === 'reconnecting') {
+    status(videoSource.sm.detail || 'Reconnecting…', false);
+  } else if (vs === 'connecting') {
+    status('Connecting…', false);
+  } else if (vs === 'live' && as === 'live') {
+    status(micMuted ? 'Mic muted' : 'Live', false);
+  }
+}
+function watchSource(src) {
+  if (!src) return;
+  src.sm.on(() => { syncSourceState(); });
+}
+function uploadFrame(frame, w, h) {
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, frame);
+}
 function frame(now) {
   requestAnimationFrame(frame);
   if (!run) { drawGrid(now, false); return; }
   const w = innerWidth, h = innerHeight;
   if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; gl.viewport(0, 0, w, h); }
-  if (vid.readyState >= 2 && vid.videoWidth) {
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, vid);
-  } else return;
+  const frameObj = videoSource && videoSource.frame();
+  if (!frameObj) return;
+  const [fw, fh] = videoSource.size();
+  if (!fw || !fh) return;
+  uploadFrame(frameObj, fw, fh);
+  videoSource.releaseFrame(frameObj);
+
+  an = audioSource ? audioSource.analyser : null;
   const t = (now - t0) / 1000;
   analyse(); updatePalette(t);
-  const ca = w / h, va = vid.videoWidth / vid.videoHeight;
+  const ca = w / h, va = fw / fh;
   gl.uniform1i(U.uT, 0);
   gl.uniform2f(U.uR, w, h);
   gl.uniform2f(U.uCov, ca > va ? 1 : ca / va, ca > va ? va / ca : 1);
@@ -394,20 +668,423 @@ function frame(now) {
   if (ov) drawGrid(now, true);
   fN++;
   if (now - fT > 500) { $('#fps').textContent = Math.round(fN * 1000 / (now - fT)) + ' fps'; fN = 0; fT = now; }
+  syncSourceState();
+  updateActiveMicMeter();
 }
 requestAnimationFrame(frame);
 
-/* ---------- UI ---------- */
+/* ---------- start / stop / connect ---------- */
+function defaultLocalSource() {
+  const src = normalizeSource({
+    id: uid(), kind: 'local', name: 'Local camera',
+    deviceId: selected.video || '', audioDeviceId: selected.audio || ''
+  });
+  return src;
+}
+function currentLocalSource() {
+  const src = activeSource();
+  if (src && src.kind === 'local') return src;
+  return defaultLocalSource();
+}
+async function connectVideo(src) {
+  if (videoSource) { videoSource.stop(); videoSource = null; }
+  const local = new LocalCameraSource(src.id, src.deviceId || '');
+  watchSource(local);
+  videoSource = local;
+  if (src.deviceId) selected.video = src.deviceId;
+  await local.start();
+}
+const micQuality = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, sampleRate: 0 };
+async function connectAudio(deviceId) {
+  if (audioSource) { audioSource.stop(); audioSource = null; }
+  an = null;
+  if (!deviceId) {
+    audioSource = new SilentAudioSource('silent');
+    watchSource(audioSource);
+    await audioSource.start();
+    return;
+  }
+  const mic = new LocalMicSource(deviceId, { ...micQuality });
+  watchSource(mic);
+  audioSource = mic;
+  await mic.start();
+}
+async function start() {
+  if (run) return;
+  const src = currentLocalSource();
+  if (!activeSource()) { store.activeId = src.id; upsertSource(src); }
+  run = true;
+  body.classList.add('on');
+  status('Connecting…');
+  await connectVideo(src);
+  await connectAudio(src.audioDeviceId || selected.audio || '');
+  wake();
+}
+function stop() {
+  run = false;
+  body.classList.remove('on', 'err', 'idle');
+  if (videoSource) { videoSource.stop(); videoSource = null; }
+  if (audioSource) { audioSource.stop(); audioSource = null; }
+  an = null;
+  try { if (localProbe.ctx) stopMicProbe(); } catch (e) {}
+  $('#fps').textContent = '';
+  status('Stopped');
+  syncSourceState();
+}
+$('#go').onclick = () => run ? stop() : start();
+
+/* ---------- saved sources ---------- */
+async function connectSaved(src) {
+  store.activeId = src.id;
+  saveStore();
+  if (src.kind === 'local') {
+    if (run) { await connectVideo(src); await connectAudio(src.audioDeviceId || selected.audio || ''); }
+    else await start();
+  } else if (src.kind === 'remote') {
+    status('Remote source is available on the Remote tab', true);
+  } else {
+    status('Network sources need the Bridge', true);
+  }
+  renderSources();
+}
+
+/* ---------- device enumeration ---------- */
+const devNote = () => $('#devNote');
+async function listDevices() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return [];
+  try { return await navigator.mediaDevices.enumerateDevices(); } catch (e) { return []; }
+}
+async function requestPermissions() {
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    s.getTracks().forEach(t => t.stop());
+    await refreshDevices();
+    return true;
+  } catch (err) {
+    const note = devNote();
+    if (note) note.textContent = 'Permission denied. Allow camera and microphone in the address bar, then try again.';
+    return false;
+  }
+}
+async function refreshDevices() {
+  const list = await listDevices();
+  const camSelect = $('#camSelect'), micSelect = $('#micSelect');
+  const fill = (sel, items, empty, key) => {
+    if (!sel) return;
+    const prev = selected[key] || sel.value;
+    sel.innerHTML = '';
+    if (!items.length) {
+      const o = document.createElement('option'); o.value = ''; o.textContent = empty; sel.appendChild(o); return;
+    }
+    items.forEach((d, i) => {
+      const o = document.createElement('option');
+      o.value = d.deviceId; o.textContent = d.label || ('Device ' + (i + 1));
+      sel.appendChild(o);
+    });
+    if (prev && items.some(d => d.deviceId === prev)) sel.value = prev;
+    else selected[key] = sel.value;
+  };
+  fill(camSelect, list.filter(d => d.kind === 'videoinput'), 'No camera found', 'video');
+  fill(micSelect, list.filter(d => d.kind === 'audioinput'), 'No microphone found', 'audio');
+  if (camSelect && camSelect.value) selected.video = camSelect.value;
+  if (micSelect && micSelect.value) selected.audio = micSelect.value;
+  const note = devNote();
+  if (note) note.textContent = list.some(d => !d.label) ? 'Device names appear after you allow access.' : '';
+  renderMicProbeList(list.filter(d => d.kind === 'audioinput'));
+}
+
+/* ---------- mic panel: quality, per-mic visualizer ---------- */
+const localProbe = { stream: null, ctx: null, analyser: null, data: null, raf: 0, bar: null, deviceId: null };
+function stopMicProbe() {
+  cancelAnimationFrame(localProbe.raf); localProbe.raf = 0;
+  if (localProbe.stream) localProbe.stream.getTracks().forEach(t => t.stop());
+  if (localProbe.ctx) localProbe.ctx.close().catch(() => {});
+  localProbe.stream = null; localProbe.ctx = null; localProbe.analyser = null; localProbe.bar = null; localProbe.deviceId = null;
+}
+async function startMicProbe(deviceId, bar) {
+  stopMicProbe();
+  localProbe.bar = bar;
+  bar.style.width = '0%';
+  try {
+    const audio = { echoCancellation: !!micQuality.echoCancellation, noiseSuppression: !!micQuality.noiseSuppression, autoGainControl: !!micQuality.autoGainControl };
+    if (deviceId) audio.deviceId = { exact: deviceId };
+    localProbe.stream = await navigator.mediaDevices.getUserMedia({ audio, video: false });
+    localProbe.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    await localProbe.ctx.resume().catch(() => {});
+    localProbe.analyser = localProbe.ctx.createAnalyser();
+    localProbe.analyser.fftSize = 1024;
+    localProbe.ctx.createMediaStreamSource(localProbe.stream).connect(localProbe.analyser);
+    localProbe.data = new Uint8Array(localProbe.analyser.fftSize);
+    localProbe.deviceId = deviceId;
+    const loop = () => {
+      if (!localProbe.analyser) return;
+      localProbe.analyser.getByteTimeDomainData(localProbe.data);
+      let sum = 0;
+      for (let i = 0; i < localProbe.data.length; i++) { const v = (localProbe.data[i] - 128) / 128; sum += v * v; }
+      const rms = Math.sqrt(sum / localProbe.data.length);
+      if (localProbe.bar) localProbe.bar.style.width = Math.min(100, rms * 380) + '%';
+      localProbe.raf = requestAnimationFrame(loop);
+    };
+    loop();
+  } catch (err) {
+    if (bar) bar.style.width = '0%';
+    status('Mic test failed: ' + errorText(err), true);
+  }
+}
+function updateActiveMicMeter() {
+  const bar = document.querySelector('#activeMicLevel');
+  if (!bar) return;
+  const analyser = audioSource && audioSource.analyser;
+  if (!analyser) { bar.style.width = '0%'; return; }
+  const data = new Uint8Array(analyser.fftSize);
+  analyser.getByteTimeDomainData(data);
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
+  bar.style.width = Math.min(100, Math.sqrt(sum / data.length) * 380) + '%';
+}
+function renderMicProbeList(mics) {
+  const host = document.querySelector('#micProbeList');
+  if (!host) return;
+  host.innerHTML = '';
+  if (!mics.length) { host.innerHTML = '<div class="hintline">No microphones found.</div>'; return; }
+  mics.forEach((mic, i) => {
+    const row = document.createElement('div');
+    row.className = 'mic-row';
+    row.innerHTML = `<div><div class="name">${escapeHtml(mic.label || ('Microphone ' + (i + 1)))}</div><div class="meter"><i></i></div></div>`;
+    const test = document.createElement('button');
+    test.className = 'btn sm'; test.textContent = 'Test';
+    test.onclick = () => startMicProbe(mic.deviceId, row.querySelector('.meter>i'));
+    const use = document.createElement('button');
+    use.className = 'btn sm primary'; use.textContent = 'Use';
+    use.onclick = async () => {
+      selected.audio = mic.deviceId;
+      if (audioSource) { audioSource.stop(); audioSource = null; }
+      await connectAudio(mic.deviceId);
+      const sel = $('#micSelect'); if (sel) sel.value = mic.deviceId;
+      syncSourceState();
+    };
+    row.appendChild(test); row.appendChild(use);
+    host.appendChild(row);
+  });
+}
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+/* ---------- sources panel ---------- */
+let sourceTab = 'local';
+const sourcesPanel = $('#sources');
+const srcTabs = $('#srcTabs');
+const srcTabContent = $('#srcTabContent');
+const SOURCE_TABS = [
+  ['local', 'Local'], ['remote', 'Remote'], ['network', 'Network'], ['saved', 'Saved']
+];
+SOURCE_TABS.forEach(([key, label]) => {
+  const b = document.createElement('button'); b.textContent = label; b.dataset.tab = key;
+  b.onclick = () => { sourceTab = key; renderSources(); };
+  srcTabs.appendChild(b);
+});
+function renderSources() {
+  [...srcTabs.children].forEach(b => b.classList.toggle('on', b.dataset.tab === sourceTab));
+  if (sourceTab === 'local') renderLocalTab();
+  else if (sourceTab === 'remote') renderRemoteTab();
+  else if (sourceTab === 'network') renderNetworkTab();
+  else renderSavedTab();
+}
+function renderLocalTab() {
+  srcTabContent.innerHTML = `
+    <div class="tabpane" id="tab-local">
+      <div class="field"><span>Camera</span><select id="camSelect"></select></div>
+      <div class="field"><span>Microphone</span><select id="micSelect"></select></div>
+      <div class="inline">
+        <button class="btn primary" id="enableDevices">Enable camera &amp; mic</button>
+        <button class="btn" id="saveLocal">Save this source</button>
+      </div>
+      <small class="hintline" id="devNote"></small>
+      <div class="checkline"><input type="checkbox" id="micMute"> <label for="micMute" style="display:inline">Mute microphone</label></div>
+      <details open>
+        <summary>Microphone quality &amp; comparison</summary>
+        <div class="inner">
+          <div class="checkline"><input type="checkbox" id="qEcho"> <label for="qEcho" style="display:inline">Echo cancellation</label></div>
+          <div class="checkline"><input type="checkbox" id="qNoise"> <label for="qNoise" style="display:inline">Noise suppression</label></div>
+          <div class="checkline"><input type="checkbox" id="qAgc"> <label for="qAgc" style="display:inline">Auto gain (flattens dynamics)</label></div>
+          <div class="field"><span>Sample rate</span><select id="qRate">
+            <option value="0">Device default</option><option value="48000">48 kHz</option><option value="44100">44.1 kHz</option>
+          </select></div>
+          <div><div class="hintline">Active mic level</div><div class="meter"><i id="activeMicLevel"></i></div></div>
+          <div id="micProbeList" class="list"></div>
+        </div>
+      </details>
+      <div class="hintline">Any camera can be paired with any microphone. Switching one does not restart the other.</div>
+    </div>`;
+  const camSelect = $('#camSelect'), micSelect = $('#micSelect');
+  camSelect.onchange = async () => {
+    selected.video = camSelect.value;
+    const src = currentLocalSource();
+    src.deviceId = camSelect.value;
+    upsertSource(src);
+    store.activeId = src.id;
+    if (run) await connectVideo(src);
+    renderSavedTab();
+  };
+  micSelect.onchange = async () => {
+    selected.audio = micSelect.value;
+    store.activeAudioDeviceId = micSelect.value;
+    const src = currentLocalSource();
+    src.audioDeviceId = micSelect.value;
+    upsertSource(src);
+    saveStore();
+    if (run) await connectAudio(micSelect.value);
+  };
+  $('#enableDevices').onclick = requestPermissions;
+  $('#saveLocal').onclick = () => {
+    const src = { id: uid(), kind: 'local', name: 'Local camera', deviceId: selected.video || '', audioDeviceId: selected.audio || '' };
+    upsertSource(src); store.activeId = src.id; saveStore(); renderSources();
+    status('Source saved');
+  };
+  $('#micMute').checked = micMuted;
+  $('#micMute').onchange = () => toggleMic();
+  $('#qEcho').checked = micQuality.echoCancellation;
+  $('#qNoise').checked = micQuality.noiseSuppression;
+  $('#qAgc').checked = micQuality.autoGainControl;
+  $('#qRate').value = String(micQuality.sampleRate || 0);
+  $('#qEcho').onchange = e => { micQuality.echoCancellation = e.target.checked; if (audioSource) reconnectAudio(); };
+  $('#qNoise').onchange = e => { micQuality.noiseSuppression = e.target.checked; if (audioSource) reconnectAudio(); };
+  $('#qAgc').onchange = e => { micQuality.autoGainControl = e.target.checked; if (audioSource) reconnectAudio(); };
+  $('#qRate').onchange = e => { micQuality.sampleRate = +e.target.value; if (audioSource) reconnectAudio(); };
+  refreshDevices();
+}
+function reconnectAudio() {
+  const id = selected.audio || (activeSource() && activeSource().audioDeviceId) || '';
+  if (audioSource) { audioSource.stop(); audioSource = null; }
+  connectAudio(id).then(syncSourceState);
+}
+function renderRemoteTab() {
+  srcTabContent.innerHTML = `
+    <div class="tabpane">
+      <div class="notice info">Remote devices use WebRTC (Tier 0, no install). Create a room, show the QR code, and the phone becomes a source.</div>
+      <div class="hintline">Signaling: <span class="mono">${escapeHtml(BACKEND)}</span></div>
+      <button class="btn primary" id="createRoom" disabled>Create remote room (Phase 3)</button>
+    </div>`;
+}
+function renderNetworkTab() {
+  srcTabContent.innerHTML = `
+    <div class="tabpane">
+      <div class="notice">Browsers cannot speak multicast/UDP/RTSP or discover LAN devices. Network cameras and smart lights need the optional local <b>Bridge</b> app (Tier 1). Nothing on this page requires it.</div>
+      <div class="field"><span>Bridge status</span><div id="bridgeStatus" class="hintline">Not checked yet.</div></div>
+      <div class="inline"><button class="btn" id="findBridge">Find Bridge</button><button class="btn" id="installBridge">Install Bridge</button></div>
+      <div class="field"><span>Manual URL (last resort)</span><input id="manualUrl" type="text" placeholder="rtsp://user:pass@192.168.1.50:554/stream"></div>
+      <div class="inline"><button class="btn primary" id="addManual">Add network source</button></div>
+      <div class="hintline">Discovery, credentials and bridge pairing arrive in Phases 4–6.</div>
+    </div>`;
+  $('#findBridge').onclick = () => probeBridge(true);
+  $('#installBridge').onclick = () => showInstallBridge();
+  $('#addManual').onclick = () => {
+    const url = ($('#manualUrl').value || '').trim();
+    if (!url) return;
+    status('Network sources need the Bridge (Phase 4)', true);
+  };
+}
+function renderSavedTab() {
+  srcTabContent.innerHTML = '<div class="tabpane"><div id="savedList" class="list"></div></div>';
+  const host = $('#savedList');
+  if (!store.sources.length) {
+    host.innerHTML = '<div class="hintline">No saved sources yet. Save a local source on the Local tab.</div>';
+    return;
+  }
+  store.sources.forEach(src => {
+    const row = document.createElement('div');
+    row.className = 'item';
+    const active = src.id === store.activeId;
+    row.innerHTML = `<div class="meta"><div class="name">${escapeHtml(src.name)}</div><div class="sub">${escapeHtml(src.kind)}${active ? ' · active' : ''}</div></div>`;
+    const actions = document.createElement('div'); actions.className = 'actions';
+    const connect = document.createElement('button'); connect.className = 'btn sm primary'; connect.textContent = 'Connect';
+    connect.onclick = () => connectSaved(src);
+    const remove = document.createElement('button'); remove.className = 'btn sm danger'; remove.textContent = 'Remove';
+    remove.onclick = () => { if (src.id === store.activeId && run) stop(); removeSource(src.id); };
+    actions.appendChild(connect); actions.appendChild(remove);
+    row.appendChild(actions); host.appendChild(row);
+  });
+}
+function toggleSources(force) {
+  const open = force === undefined ? !sourcesPanel.classList.contains('open') : force;
+  sourcesPanel.classList.toggle('open', open);
+  $('#srcBtn').classList.toggle('on', open);
+  if (open) {
+    closeTune(); closeIntegrations();
+    if (sourceTab === 'local') renderSources();
+    else renderSources();
+    wake();
+  }
+}
+$('#srcBtn').onclick = e => { e.stopPropagation(); toggleSources(); };
+$('#close-sources').onclick = () => toggleSources(false);
+document.addEventListener('pointerdown', e => {
+  if (sourcesPanel.classList.contains('open') && !sourcesPanel.contains(e.target) && !$('#srcBtn').contains(e.target)) toggleSources(false);
+});
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+  navigator.mediaDevices.addEventListener('devicechange', () => {
+    refreshDevices();
+    if (run && videoSource && videoSource.sm.state !== 'live') videoSource.start();
+  });
+}
+
+/* ---------- bridge detection (used from Phase 4 onward) ---------- */
+let bridge = { found: false, port: null, token: null, version: null };
+async function probeBridge(explain) {
+  if (explain) {
+    const statusEl = document.querySelector('#bridgeStatus');
+    if (statusEl) statusEl.textContent = 'Checking 127.0.0.1:8765–8767 (first local request — your browser may ask for permission)…';
+  }
+  for (const port of BRIDGE_PORTS) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 1200);
+      const resp = await fetch(bridgeURL(port, '/health'), { signal: ctrl.signal, cache: 'no-store' });
+      clearTimeout(timer);
+      if (resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        bridge = { found: true, port, token: bridge.token, version: data.version || null };
+        const statusEl = document.querySelector('#bridgeStatus');
+        if (statusEl) statusEl.textContent = `Bridge found on 127.0.0.1:${port}${data.version ? ' · v' + data.version : ''}.`;
+        return true;
+      }
+    } catch (e) {}
+  }
+  bridge = { found: false, port: null, token: null, version: null };
+  const statusEl = document.querySelector('#bridgeStatus');
+  if (statusEl) statusEl.textContent = 'No Bridge found. Install it to use network cameras and local smart lights.';
+  return false;
+}
+function showInstallBridge() {
+  status('Bridge download is documented in BRIDGE_INSTALL.md (Phase 6)', true);
+}
+
+/* ---------- mic mute ---------- */
+function toggleMic() {
+  if (!audioSource || audioSource.sm.state !== 'live') {
+    status(run ? 'No microphone available' : 'Start the feed to use the mic');
+    return;
+  }
+  micMuted = !micMuted;
+  if (audioSource.stream) audioSource.stream.getAudioTracks().forEach(t => { t.enabled = !micMuted; });
+  $('#micBtn').classList.toggle('off', micMuted);
+  $('#micBtn').title = micMuted ? 'Microphone (muted)' : 'Microphone (mute)';
+  const box = $('#micMute'); if (box) box.checked = micMuted;
+  status(micMuted ? 'Mic muted' : 'Live');
+}
+$('#micBtn').onclick = e => { e.stopPropagation(); toggleMic(); };
+
+/* ---------- modes / tune / grid / presets ---------- */
 const seg = $('#seg'), hl = seg.firstElementChild;
 MODES.forEach((m, i) => { const b = document.createElement('button'); b.textContent = m; b.onclick = () => setMode(i); seg.appendChild(b); });
-function moveHl() { const b = seg.children[mode + 1]; hl.style.width = b.offsetWidth + 'px'; hl.style.transform = `translateX(${b.offsetLeft}px)`; }
+function moveHl() { const b = seg.children[mode + 1]; if (!b) return; hl.style.width = b.offsetWidth + 'px'; hl.style.transform = `translateX(${b.offsetLeft}px)`; }
 function setMode(i) {
   mode = i; [...seg.children].forEach((b, k) => b.classList.toggle('on', k === i + 1));
-  const p = PRESETS[mode];
-  S = p;
+  const p = PRESETS[mode]; S = p;
   const sPix = document.getElementById('sPix'), sSens = document.getElementById('sSens'), sResp = document.getElementById('sResp');
   sPix.value = p.pix; sSens.value = p.sens; sResp.value = p.resp;
-  [sPix, sSens, sResp].forEach(el => { el.dispatchEvent(new Event('input')); });
+  [sPix, sSens, sResp].forEach(el => el.dispatchEvent(new Event('input')));
   moveHl(); seg.children[i + 1].scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
 }
 setMode(0); addEventListener('resize', moveHl); document.fonts && document.fonts.ready.then(moveHl);
@@ -420,84 +1097,15 @@ const fmt = { sPix: v => v + 'px', sSens: v => (+v).toFixed(1) + '×', sResp: v 
 });
 
 const tune = $('#tune'), tb = $('#tb');
-tb.onclick = e => { e.stopPropagation(); tune.classList.toggle('open'); tb.classList.toggle('on'); toggleDevices(false); };
-document.addEventListener('pointerdown', e => { if (!tune.contains(e.target) && !tb.contains(e.target)) { tune.classList.remove('open'); tb.classList.remove('on'); } });
-
-/* ---------- camera / microphone ---------- */
-const devicesPanel = $('#devices'), camBtn = $('#camBtn'), micBtn = $('#micBtn');
-const camSelect = $('#camSelect'), micSelect = $('#micSelect'), devNote = $('#devNote');
-
-async function refreshDevices() {
-  const md = navigator.mediaDevices;
-  if (!md || !md.enumerateDevices) { devNote.textContent = 'Device selection needs https or localhost.'; return; }
-  let list;
-  try { list = await md.enumerateDevices(); } catch (e) { return; }
-  const fill = (sel, items, empty, key) => {
-    const prev = selected[key];
-    sel.innerHTML = '';
-    if (!items.length) {
-      const o = document.createElement('option'); o.value = ''; o.textContent = empty; sel.appendChild(o);
-      return;
-    }
-    items.forEach((d, i) => {
-      const o = document.createElement('option');
-      o.value = d.deviceId; o.textContent = d.label || ('Device ' + (i + 1));
-      sel.appendChild(o);
-    });
-    if (prev && items.some(d => d.deviceId === prev)) sel.value = prev;
-    else selected[key] = sel.value;
-  };
-  fill(camSelect, list.filter(d => d.kind === 'videoinput'), 'No camera found', 'video');
-  fill(micSelect, list.filter(d => d.kind === 'audioinput'), 'No microphone found', 'audio');
-  devNote.textContent = list.some(d => !d.label) ? 'Device names appear after you allow access.' : '';
-}
-
-function toggleDevices(force) {
-  const open = force === undefined ? !devicesPanel.classList.contains('open') : force;
-  devicesPanel.classList.toggle('open', open);
-  camBtn.classList.toggle('on', open);
-  if (open) {
-    tune.classList.remove('open'); tb.classList.remove('on');
-    refreshDevices(); wake();
-  }
-}
-camBtn.onclick = e => { e.stopPropagation(); toggleDevices(); };
+function closeTune() { tune.classList.remove('open'); tb.classList.remove('on'); }
+tb.onclick = e => {
+  e.stopPropagation();
+  const open = !tune.classList.contains('open');
+  tune.classList.toggle('open', open); tb.classList.toggle('on', open);
+  if (open) { toggleSources(false); closeIntegrations(); }
+};
 document.addEventListener('pointerdown', e => {
-  if (devicesPanel.classList.contains('open') && !devicesPanel.contains(e.target) && !camBtn.contains(e.target)) toggleDevices(false);
-});
-
-async function switchStream() {
-  if (!run) return;
-  const muted = micMuted;
-  stop();
-  await start();
-  if (muted && run && hasMic) toggleMic();
-}
-camSelect.onchange = () => { selected.video = camSelect.value; if (run) switchStream(); };
-micSelect.onchange = () => { selected.audio = micSelect.value; if (run) switchStream(); };
-if (navigator.mediaDevices) navigator.mediaDevices.addEventListener?.('devicechange', refreshDevices);
-
-function toggleMic() {
-  if (!hasMic || !stream || !stream.getAudioTracks().length) {
-    status(run ? 'No microphone available' : 'Start the feed to use the mic');
-    return;
-  }
-  micMuted = !micMuted;
-  stream.getAudioTracks().forEach(t => { t.enabled = !micMuted; });
-  micBtn.classList.toggle('off', micMuted);
-  micBtn.title = micMuted ? 'Microphone (muted)' : 'Microphone (mute)';
-  status(micMuted ? 'Mic muted' : 'Live');
-}
-micBtn.onclick = e => { e.stopPropagation(); toggleMic(); };
-function toggleMirror() { mirror ^= 1; $('#mr').classList.toggle('on', !!mirror); }
-function toggleFs() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
-function toggleGrid() { ov = !ov; body.classList.toggle('ov', ov); $('#gd').classList.toggle('on', ov); }
-$('#gd').onclick = toggleGrid; $('#mr').onclick = toggleMirror; $('#fs').onclick = toggleFs;
-addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' || e.ctrlKey || e.metaKey) return;
-  if (e.key >= '1' && e.key <= '5') setMode(+e.key - 1);
-  else if (e.key === ' ') { e.preventDefault(); $('#go').click(); }
-  else if (e.key === 'f') toggleFs(); else if (e.key === 'm') toggleMirror(); else if (e.key === 'g') toggleGrid();
+  if (!tune.contains(e.target) && !tb.contains(e.target)) closeTune();
 });
 
 const presetName = document.getElementById('presetName');
@@ -526,97 +1134,85 @@ presetLoad.onclick = () => {
   [sPix, sSens, sResp].forEach(el => el.dispatchEvent(new Event('input')));
 };
 refreshPresets();
-let hideT;
-function wake() {
-  body.classList.remove('idle'); clearTimeout(hideT);
-  hideT = setTimeout(() => { if (run && !$('#dock').matches(':hover') && !tune.classList.contains('open') && !integrationsOpen) body.classList.add('idle'); }, 3000);
-}
-['mousemove', 'pointerdown', 'touchstart', 'keydown'].forEach(ev => addEventListener(ev, wake, { passive: true }));
 
-/* ---------- integrations panel ---------- */
+function toggleMirror() { mirror ^= 1; $('#mr').classList.toggle('on', !!mirror); }
+function toggleFs() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
+function toggleGrid() { ov = !ov; body.classList.toggle('ov', ov); $('#gd').classList.toggle('on', ov); }
+$('#gd').onclick = toggleGrid; $('#mr').onclick = toggleMirror; $('#fs').onclick = toggleFs;
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.ctrlKey || e.metaKey) return;
+  if (e.key >= '1' && e.key <= '5') setMode(+e.key - 1);
+  else if (e.key === ' ') { e.preventDefault(); $('#go').click(); }
+  else if (e.key === 'f') toggleFs(); else if (e.key === 'm') toggleMirror(); else if (e.key === 'g') toggleGrid();
+});
+
+/* ---------- integrations panel (expanded in Phase 7) ---------- */
 let integrationsOpen = false;
 const integrationPanel = $('#integrations-panel');
-const closeIntegrations = $('#close-integrations');
 const integrationTabs = $('#integration-tabs');
 const integrationContent = $('#integration-tab-content');
-
 function toggleIntegrations(force) {
   integrationsOpen = force === undefined ? !integrationsOpen : force;
-  integrationPanel.style.opacity = integrationsOpen ? '1' : '0';
-  integrationPanel.style.transform = integrationsOpen ? 'translateY(0) scale(1)' : 'translateY(10px) scale(.94)';
-  integrationPanel.style.pointerEvents = integrationsOpen ? 'auto' : 'none';
+  integrationPanel.classList.toggle('open', integrationsOpen);
   $('#integration').classList.toggle('on', integrationsOpen);
-  if (integrationsOpen) wake();
+  if (integrationsOpen) {
+    toggleSources(false); closeTune();
+    renderIntegrationTab(integrationTab); wake();
+  }
 }
+function closeIntegrations() { toggleIntegrations(false); }
 $('#integration').onclick = e => { e.stopPropagation(); toggleIntegrations(); };
-closeIntegrations.onclick = () => toggleIntegrations(false);
+$('#close-integrations').onclick = () => toggleIntegrations(false);
 document.addEventListener('pointerdown', e => {
   if (integrationsOpen && !integrationPanel.contains(e.target) && !$('#integration').contains(e.target)) toggleIntegrations(false);
 });
 
-/* These integrations need a backend that doesn't exist yet, so the buttons
-   report that instead of throwing a ReferenceError. */
-const tabContent = {
-  local: `
-    <div style="margin-top:12px;">
-      <h4>Local Network (Tuya/IoT)</h4>
-      <p>Discover Tuya devices on your local network</p>
-      <button id="scan-tuya" style="width:100%;margin-top:8px;">Scan for Devices</button>
-      <div id="tuya-devices" style="margin-top:12px;max-height:200px;overflow:auto;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px;display:none;"></div>
-    </div>
-  `,
-  wifi: `
-    <div style="margin-top:12px;">
-      <h4>WiFi Devices</h4>
-      <p>Connect to WiFi-enabled equipment</p>
-      <input id="wifi-ssid" type="text" placeholder="SSID" style="width:100%;padding:8px;margin:8px 0;border:1px solid rgba(255,255,255,.18);border-radius:4px;">
-      <input id="wifi-password" type="password" placeholder="Password" style="width:100%;padding:8px;margin:8px 0;border:1px solid rgba(255,255,255,.18);border-radius:4px;">
-      <button id="connect-wifi" style="width:100%;margin-top:8px;">Connect</button>
-    </div>
-  `,
-  google: `
-    <div style="margin-top:12px;">
-      <h4>Google Home</h4>
-      <p>Connect to Google Home/Nest devices</p>
-      <button id="scan-google" style="width:100%;margin-top:8px;">Scan for Devices</button>
-      <div id="google-devices" style="margin-top:12px;max-height:200px;overflow:auto;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px;display:none;"></div>
-    </div>
-  `,
-  other: `
-    <div style="margin-top:12px;">
-      <h4>Other Providers</h4>
-      <p>Add integrations with other smart home providers</p>
-      <input id="other-provider" type="text" placeholder="Provider name" style="width:100%;padding:8px;margin:8px 0;border:1px solid rgba(255,255,255,.18);border-radius:4px;">
-      <button id="add-provider" style="width:100%;margin-top:8px;">Add Provider</button>
-    </div>
-  `
-};
-
-function renderTabContent(tab) {
-  integrationContent.innerHTML = tabContent[tab] || '';
-  [...integrationTabs.children].forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  const stub = label => () => {
-    const p = document.createElement('p');
-    p.style.cssText = 'margin-top:10px;color:var(--mut)';
-    p.textContent = label + ' is not available yet.';
-    integrationContent.appendChild(p);
-  };
-  const wire = (id, label) => { const el = document.getElementById(id); if (el) el.onclick = stub(label); };
-  wire('scan-tuya', 'Tuya discovery');
-  wire('connect-wifi', 'WiFi connect');
-  wire('scan-google', 'Google Home discovery');
-  wire('add-provider', 'Custom providers');
-}
-function switchTab(tab) { renderTabContent(tab); }
-
-['local', 'wifi', 'google', 'other'].forEach(tab => {
-  const b = document.createElement('button');
-  b.textContent = tab[0].toUpperCase() + tab.slice(1);
-  b.dataset.tab = tab;
-  b.onclick = () => switchTab(tab);
+let integrationTab = 'bridge';
+const INTEGRATION_TABS = [
+  ['bridge', 'Bridge/Local'], ['cloud', 'Cloud'], ['devices', 'Devices'], ['google', 'Google']
+];
+INTEGRATION_TABS.forEach(([key, label]) => {
+  const b = document.createElement('button'); b.textContent = label; b.dataset.tab = key;
+  b.onclick = () => { integrationTab = key; renderIntegrationTab(key); };
   integrationTabs.appendChild(b);
 });
-renderTabContent('local');
+function renderIntegrationTab(tab) {
+  [...integrationTabs.children].forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  if (tab === 'bridge') {
+    integrationContent.innerHTML = `
+      <div class="tabpane">
+        <div class="hintline">Local smart lights are driven by the Bridge. The browser owns the audio→light mapping; the Bridge only sends frames to devices.</div>
+        <button class="btn" id="findBridge2">Check Bridge</button>
+        <div class="hintline" id="bridgeStatus2">Not checked yet.</div>
+        <div class="hintline">WiZ is the first driver (UDP, no keys). Tuya local, Hue Entertainment, LIFX LAN, Govee LAN and Matter follow in Phase 7.</div>
+      </div>`;
+    $('#findBridge2').onclick = async () => { const ok = await probeBridge(true); const el = $('#bridgeStatus2'); if (el) el.textContent = ok ? 'Bridge reachable.' : 'Bridge not found.'; };
+  } else if (tab === 'cloud') {
+    integrationContent.innerHTML = '<div class="tabpane"><div class="notice info">Optional cloud slow mode (no Bridge) is beat-level only (≤ 2 updates/s) and labelled low-fidelity. It needs the hosted backend OAuth configuration.</div></div>';
+  } else if (tab === 'devices') {
+    integrationContent.innerHTML = '<div class="tabpane"><div class="hintline">Discovered lights appear here once the Bridge is running.</div></div>';
+  } else {
+    integrationContent.innerHTML = `<div class="tabpane"><div class="notice">Google Home cannot be controlled from a website: the Home APIs are native Android/iOS SDKs (preview, certification required). Use Matter or the device's native protocol through the Bridge instead.</div></div>`;
+  }
+}
+
+/* ---------- idle cursor ---------- */
+let hideT;
+function wake() {
+  body.classList.remove('idle'); clearTimeout(hideT);
+  hideT = setTimeout(() => {
+    if (run && !$('#dock').matches(':hover') && !tune.classList.contains('open') && !sourcesPanel.classList.contains('open') && !integrationsOpen) body.classList.add('idle');
+  }, 3000);
+}
+['mousemove', 'pointerdown', 'touchstart', 'keydown'].forEach(ev => addEventListener(ev, wake, { passive: true }));
+
+/* ---------- boot ---------- */
+loadStore();
+renderSources();
+refreshDevices();
+if ('mediaDevices' in navigator && navigator.mediaDevices.addEventListener) {
+  navigator.mediaDevices.addEventListener('devicechange', refreshDevices);
+}
 </script>
 </body>
 </html>
