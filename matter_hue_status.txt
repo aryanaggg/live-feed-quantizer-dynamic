@@ -1,0 +1,28 @@
+Matter Driver Status:
+- Implementation: STUB only - abstract base, return empty for discovery, log intent for set_state
+- capabilities(): rate_mode="slow", max_rate_hz=1.0 (default)
+- status(): includes needs_credentials, ready
+- latency_ms: tracked in __init__
+- Tested: Yes - returns empty list for discover, logs state updates
+- Real hardware verified: No (abstract base by design)
+- Status: Feasibility note only - no commissioning, no DTLS, no LAN control
+- Library options: python-matter-server (archived, 8.1.2) and matterjs-server (matter-server 1.5.5)
+  (sourced details in docs/MATTER_FEASIBILITY.md; pymatter and chip-fabric removed as unsourced/unrelated)
+
+Hue Driver Status - Pairing Only Designation:
+From DRIVER_STATUS_HONEST.txt summary:
+"Hue has pairing + discovery only; capabilities report streaming=False, rate_mode='unavailable', max_rate_hz=0.0."
+
+What IS implemented:
+* mDNS discovery of _hue._tcp.local
+* Link-button pair() generates per-origin token
+* set_state() logs intent (not actual DTLS frames)
+* Entertainment area device tracking
+* capabilities: streaming=False, rate_mode="unavailable", max_rate_hz=0.0
+
+What is NOT implemented:
+* Actual DTLS-framed commands to Hue Bridge
+* DTLS-PSK streaming
+
+Action: DTLS-PSK streaming not implemented; driver is pairing/discovery only
+DTLS-PSK approach (for future): Use TLS-PSK cipher suites with the Bridge's local key as the pre-shared key
