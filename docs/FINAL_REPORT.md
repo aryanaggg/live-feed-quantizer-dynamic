@@ -201,7 +201,7 @@ tests/test_frontend_static.py::test_hue_capabilities_render_as_pairing_only PASS
 6 passed, 104 deselected
 ```
 
-The stale status notes were corrected in `DRIVER_STATUS_HONEST.txt` and `matter_hue_status.txt`: they now say `streaming=False`, `rate_mode="unavailable"`, `max_rate_hz=0.0`, and explicitly state that no realtime 30 Hz claim is supported.
+The stale status notes were corrected in `docs/DRIVER_STATUS.md` and `docs/MATTER_HUE_STATUS.md`: they now say `streaming=False`, `rate_mode="unavailable"`, `max_rate_hz=0.0`, and explicitly state that no realtime 30 Hz claim is supported.
 
 ## Item 6 - Matter feasibility note
 
@@ -235,7 +235,7 @@ The web-search tool returned `{"error":{"type":"unknown","message":"Web search c
 
 ## Item 7 - test-name diff and the "90" claim
 
-Baseline `354060b` vs current `main`:
+Baseline commit used for the 43-function diff: **`354060b`** (phase 2, immediately before the corrective phase). Baseline vs current `main`:
 
 | Measure | Baseline | Current |
 |---|---:|---:|

@@ -48,6 +48,12 @@ The earlier status notes listed two additional names. They are removed:
 
 ## Decision
 
+Recommend **`matterjs-server`** for any future Matter work: it is the active
+Open Home Foundation project and its npm package `matter-server` is the
+successor to the archived Python server. Do **not** start new work on
+`python-matter-server`; its repository is archived and 8.1.2 (2025-12-15) is
+the final release.
+
 Do not claim Matter realtime lighting support. Keep the driver labeled as a
 feasibility stub until a sidecar server integration and commissioning flow are
 implemented and tested against real hardware.

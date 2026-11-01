@@ -10,7 +10,7 @@ Matter Driver Status:
   (sourced details in docs/MATTER_FEASIBILITY.md; pymatter and chip-fabric removed as unsourced/unrelated)
 
 Hue Driver Status - Pairing Only Designation:
-From DRIVER_STATUS_HONEST.txt summary:
+From docs/DRIVER_STATUS.md summary:
 "Hue has pairing + discovery only; capabilities report streaming=False, rate_mode='unavailable', max_rate_hz=0.0."
 
 What IS implemented:

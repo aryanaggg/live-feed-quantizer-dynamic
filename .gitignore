@@ -19,3 +19,22 @@ node_modules/
 Thumbs.db
 .idea/
 .vscode/
+
+# Local scratch output (never commit test/report dumps)
+/pytest_*.txt
+/all_tests.txt
+/current_coll.txt
+/full_output.txt
+/full_test_result.txt
+/merge_test_result*.txt
+/option_c_*.txt
+/sec_coll*.txt
+/security_result*.txt
+/security_test_result*.txt
+/summary*.txt
+/*_collect*.txt
+/check_results.txt
+/diff_output.txt
+/report_test.txt
+/test-results/
+

@@ -41,3 +41,9 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test"
 python_functions = "test_"
+# Starlette 0.27 (pinned by FastAPI 0.104) passes the deprecated httpx
+# ``app=`` shortcut.  This is a third-party compatibility warning; the test
+# client still uses the supported ASGI transport internally.
+filterwarnings = [
+    "ignore:The 'app' shortcut is now deprecated:DeprecationWarning:httpx._client",
+]

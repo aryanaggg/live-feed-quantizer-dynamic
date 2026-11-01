@@ -5,7 +5,7 @@ RTSP/HTTP camera frames, and forwards unquantized JPEG frames to the browser ove
 a WebSocket.  The browser still owns the palette and every WebGL mode: the
 Bridge never quantizes and never sees audio.
 
-Security model (see ``ARCHITECTURE_REVIEW.md``):
+Security model (see ``docs/ARCHITECTURE_REVIEW.md``):
 
 * every HTTP request and WebSocket upgrade must carry a loopback ``Host`` header
   (DNS-rebinding defence),
