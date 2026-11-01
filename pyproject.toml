@@ -35,3 +35,9 @@ start = "server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test"
+python_functions = "test_"
