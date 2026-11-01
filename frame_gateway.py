@@ -1166,6 +1166,8 @@ class HomeAssistantDriver(LightDriver):
                 "devices": [{"id": d["id"], "name": d["name"], "ready": d.get("ready", False), "needs_credentials": d.get("needs_credentials", False)} for d in devices]}
 
 DEFAULT_FLASH_CAP_HZ = 3.0
+DEFAULT_SMOOTHING_MS = 50.0
+MAX_SMOOTHING_MS = 1000.0
 LARGE_TRANSITION_RGB_DISTANCE = 128.0
 LARGE_TRANSITION_LUMA_DELTA = 0.5
 
@@ -1213,9 +1215,13 @@ class LightStreamController:
     """Per-connection latest-wins light output with rate and flash caps.
 
     The controller coalesces frames per device, dispatches at the driver's
-    ``max_rate_hz``, and limits large luminance/colour transitions to
-    ``flash_cap_hz`` (default ``DEFAULT_FLASH_CAP_HZ``, 3/s).  A suppressed
-    frame is kept as the latest state and delivered when the cap allows it.
+    ``max_rate_hz``, limits large luminance/colour transitions to
+    ``flash_cap_hz`` (default ``DEFAULT_FLASH_CAP_HZ``, 3/s), then applies a
+    minimum spacing between any two sends (``smoothing_ms``, default
+    ``DEFAULT_SMOOTHING_MS``).  The flash cap is a hard ceiling: smoothing can
+    delay a send but can never raise the number of large transitions.  A
+    suppressed frame is kept as the latest state and delivered when both
+    stages allow it.
     """
 
     def __init__(self, drivers: dict[str, "LightDriver"], clock=time.monotonic, sleep=asyncio.sleep):
@@ -1245,17 +1251,29 @@ class LightStreamController:
             cap = DEFAULT_FLASH_CAP_HZ
         return max(0.0, cap)
 
+    def _smoothing_ms(self, state: dict) -> float:
+        try:
+            value = float(state.get("smoothing_ms", DEFAULT_SMOOTHING_MS))
+        except (TypeError, ValueError):
+            value = DEFAULT_SMOOTHING_MS
+        return max(0.0, min(MAX_SMOOTHING_MS, value))
+
     def _next_delay(self, device_id: str, kind: str, state: dict) -> float:
         now = self.clock()
         rate_hz = self._rate_hz(kind)
         if rate_hz <= 0:
             return 1.0
-        delay = max(0.0, (1.0 / rate_hz) - (now - self.last_sent_at.get((kind, device_id), 0.0)))
+        last_sent = self.last_sent_at.get((kind, device_id), 0.0)
+        delay = max(0.0, (1.0 / rate_hz) - (now - last_sent))
         cap = self._flash_cap_hz(state)
         if cap > 0 and is_large_transition(self.last_sent_state.get(device_id), state):
             times = self.large_transitions.get(device_id)
             if times and len(times) >= cap:
                 delay = max(delay, times[0] + 1.0 - now)
+        # Smoothing runs after the flash cap: it only adds spacing.
+        spacing = self._smoothing_ms(state) / 1000.0
+        if spacing > 0:
+            delay = max(delay, spacing - (now - last_sent))
         return max(0.0, delay)
 
     def _flash_allows(self, device_id: str, state: dict, now: float) -> bool:
@@ -1287,7 +1305,11 @@ class LightStreamController:
             if rate_hz <= 0:
                 return False
             now = self.clock()
-            if now - self.last_sent_at.get((kind, device_id), 0.0) < (1.0 / rate_hz) - 1e-9:
+            last_sent = self.last_sent_at.get((kind, device_id), 0.0)
+            if now - last_sent < (1.0 / rate_hz) - 1e-9:
+                return False
+            spacing = self._smoothing_ms(state) / 1000.0
+            if spacing > 0 and now - last_sent < spacing - 1e-9:
                 return False
             if not self._flash_allows(device_id, state, now):
                 return False
