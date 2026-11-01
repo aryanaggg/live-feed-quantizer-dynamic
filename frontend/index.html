@@ -1176,6 +1176,19 @@ INTEGRATION_TABS.forEach(([key, label]) => {
   b.onclick = () => { integrationTab = key; renderIntegrationTab(key); };
   integrationTabs.appendChild(b);
 });
+function lightDriverModeLabel(caps) {
+  if (!caps) return 'unknown';
+  if (caps.streaming === false || caps.rate_mode === 'unavailable' || !(caps.max_rate_hz > 0)) return 'pairing only';
+  return `${caps.rate_mode || 'slow'} · ${caps.max_rate_hz} Hz`;
+}
+function renderLightDriverModes(capsByDriver) {
+  const host = $('#lightDriverModes');
+  if (!host) return;
+  const rows = Object.entries(capsByDriver || {}).map(([name, caps]) =>
+    `<div class="hintline">${escapeHtml(name)}: <span class="badge">${escapeHtml(lightDriverModeLabel(caps))}</span></div>`
+  );
+  host.innerHTML = rows.join('') || '<div class="hintline">No light drivers reported yet.</div>';
+}
 function renderIntegrationTab(tab) {
   [...integrationTabs.children].forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   if (tab === 'bridge') {
@@ -1190,7 +1203,8 @@ function renderIntegrationTab(tab) {
   } else if (tab === 'cloud') {
     integrationContent.innerHTML = '<div class="tabpane"><div class="notice info">Optional cloud slow mode (no Bridge) is beat-level only (≤ 2 updates/s) and labelled low-fidelity. It needs the hosted backend OAuth configuration.</div></div>';
   } else if (tab === 'devices') {
-    integrationContent.innerHTML = '<div class="tabpane"><div class="hintline">Discovered lights appear here once the Bridge is running.</div></div>';
+    integrationContent.innerHTML = '<div class="tabpane"><div class="hintline">Discovered lights appear here once the Bridge is running.</div><div id="lightDriverModes"></div></div>';
+    if (window.__lfqLightCaps) renderLightDriverModes(window.__lfqLightCaps);
   } else {
     integrationContent.innerHTML = `<div class="tabpane"><div class="notice">Google Home cannot be controlled from a website: the Home APIs are native Android/iOS SDKs (preview, certification required). Use Matter or the device's native protocol through the Bridge instead.</div></div>`;
   }

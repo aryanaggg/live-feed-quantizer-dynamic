@@ -69,3 +69,37 @@ def test_inline_javascript_parses():
         assert result.returncode == 0, result.stderr
     finally:
         Path(path).unlink(missing_ok=True)
+
+
+def test_frontend_renders_light_driver_modes_from_capabilities():
+    text = _index_text()
+    assert "lightDriverModeLabel" in text
+    assert "renderLightDriverModes" in text
+    assert "pairing only" in text
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+def test_hue_capabilities_render_as_pairing_only():
+    script = _inline_script()
+    match = re.search(r"(function lightDriverModeLabel\(caps\) \{.*?\n\})", script, re.S)
+    assert match, "frontend must define lightDriverModeLabel(caps)"
+
+    probe = match.group(1) + """
+const hue = {streaming: false, rate_mode: 'unavailable', max_rate_hz: 0};
+const wiz = {streaming: true, rate_mode: 'slow', max_rate_hz: 1};
+console.log(lightDriverModeLabel(hue));
+console.log(lightDriverModeLabel(wiz));
+"""
+    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as handle:
+        handle.write(probe)
+        path = handle.name
+    try:
+        result = subprocess.run(
+            ["node", path], capture_output=True, text=True, encoding="utf-8"
+        )
+        assert result.returncode == 0, result.stderr
+        lines = result.stdout.strip().splitlines()
+        assert lines[0] == "pairing only"
+        assert lines[1] == "slow · 1 Hz"
+    finally:
+        Path(path).unlink(missing_ok=True)
