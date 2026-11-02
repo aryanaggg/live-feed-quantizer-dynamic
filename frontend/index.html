@@ -5,18 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Live Feed Quantizer</title>
 <style>
-:root{--lvl:0;--e:cubic-bezier(.22,1,.36,1);--s:cubic-bezier(.34,1.56,.64,1);--mut:rgba(255,255,255,.55)}
+:root{--lvl:0;--e:cubic-bezier(.22,1,.36,1);--s:cubic-bezier(.34,1.56,.64,1);--mut:rgba(255,255,255,.55);--line:rgba(255,255,255,.16);--ok:#5ee3a1;--warn:#ffb86b;--bad:#ff6b6b}
 *{margin:0;box-sizing:border-box}
 html,body{height:100%;background:#0a0a0a;color:#f4f4f8;font:13px/1.4 Inter,system-ui,-apple-system,'Segoe UI',sans-serif;overflow:hidden}
 body.idle{cursor:none}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
-button:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:2px}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid #fff;outline-offset:2px}
+input,select{font:inherit}
 
 #grid{position:fixed;inset:0;width:100%;height:100%;z-index:0}
 body.ov #grid{z-index:2;mix-blend-mode:screen;pointer-events:none}
 #cv{position:fixed;z-index:1;inset:0;width:100%;height:100%;opacity:0;transition:opacity .9s var(--e)}
 body.on #cv{opacity:1}
-#hint{position:fixed;inset:0;display:grid;place-items:center;font-size:15px;color:var(--mut);pointer-events:none;transition:opacity .5s;animation:pulse 3.4s ease-in-out infinite}
+#hint{position:fixed;inset:0;display:grid;place-items:center;font-size:15px;color:var(--mut);pointer-events:none;transition:opacity .5s;animation:pulse 3.4s ease-in-out infinite;text-align:center;padding:24px}
 body.on #hint{opacity:0;animation:none}
 @keyframes pulse{50%{opacity:.45}}
 
@@ -26,13 +27,15 @@ body.idle .ui{opacity:0;transform:translateY(14px)}
 body.idle #top{transform:translateY(-14px)}
 body.idle.err .ui{opacity:1;transform:none}
 
-#top{position:fixed;top:16px;left:16px;z-index:5;display:flex;align-items:center;gap:10px;padding:9px 16px;border-radius:99px}
-#dot{width:7px;height:7px;border-radius:50%;background:var(--mut);transition:background .4s}
-body.on #dot{background:#5ee3a1;animation:ping 1.8s ease-out infinite}
-body.err #dot{background:#ff6b6b;animation:none}
+#top{position:fixed;top:16px;left:16px;z-index:5;display:flex;align-items:center;gap:10px;padding:9px 16px;border-radius:99px;max-width:calc(100vw - 32px)}
+#dot{width:7px;height:7px;border-radius:50%;background:var(--mut);transition:background .4s;flex:none}
+body.on #dot{background:var(--ok);animation:ping 1.8s ease-out infinite}
+body.err #dot{background:var(--bad);animation:none}
 @keyframes ping{0%{box-shadow:0 0 0 0 rgba(94,227,161,.6)}100%{box-shadow:0 0 0 9px rgba(94,227,161,0)}}
-#st,#fps{color:var(--mut);font-variant-numeric:tabular-nums}
+#st,#fps,#srcState{color:var(--mut);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body.err #st{color:#ff8b8b}
+#srcState{display:none}
+@media(min-width:760px){#srcState{display:inline}}
 
 #dock{position:fixed;left:50%;bottom:22px;translate:-50% 0;z-index:6;display:flex;align-items:center;gap:10px;padding:9px;border-radius:34px;max-width:96vw;
   box-shadow:0 12px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.28)}
@@ -54,13 +57,13 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke
 body.on #sw{display:flex}
 #sw span{width:8px;height:30px;border-radius:4px}
 
-#tune,#devices{position:fixed;left:50%;bottom:104px;translate:-50% 0;z-index:6;width:min(330px,90vw);display:grid;gap:14px;padding:18px;border-radius:24px;
+#tune,#sources,#integrations-panel{position:fixed;left:50%;bottom:104px;translate:-50% 0;z-index:7;width:min(420px,94vw);max-height:min(74vh,660px);overflow:auto;display:grid;gap:14px;padding:18px;border-radius:24px;
   opacity:0;transform:translateY(10px) scale(.94);transform-origin:50% 100%;pointer-events:none;transition:opacity .25s,transform .55s var(--s)}
-#tune.open,#devices.open{opacity:1;transform:none;pointer-events:auto}
-body.idle #tune.open,body.idle #devices.open{opacity:0}
-#devices label{display:grid;gap:6px;color:var(--mut);font-size:12px}
-#devices select{width:100%;padding:9px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:inherit;font:inherit}
-#devices select:focus-visible{outline:2px solid #fff;outline-offset:2px}
+#tune{width:min(330px,90vw)}
+#tune.open,#sources.open,#integrations-panel.open{opacity:1;transform:none;pointer-events:auto}
+body.idle #tune.open,body.idle #sources.open,body.idle #integrations-panel.open{opacity:0}
+#sources label,#tune label,#integrations-panel label{display:grid;gap:6px;color:var(--mut);font-size:12px}
+#sources select,#tune select,#integrations-panel select,#sources input[type=text],#sources input[type=password],#integrations-panel input{width:100%;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.35);color:inherit}
 #devNote{color:var(--mut);font-size:11px}
 .ic.off{opacity:.4}
 .row{display:grid;grid-template-columns:62px 1fr 38px;align-items:center;gap:10px}
@@ -70,7 +73,49 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;heigh
 input[type=range]::-moz-range-thumb{width:15px;height:15px;border:0;border-radius:50%;background:#fff}
 input[type=range]:active::-webkit-slider-thumb{transform:scale(1.35)}
 
-@media(max-width:640px){body.on #sw,#fps{display:none}.ic{width:38px;height:38px}#mr,#gd,#fs,#integration{display:none}.seg button{padding:9px 11px}}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.panel-head h3{font-size:15px;font-weight:600}
+.field{display:grid;gap:6px}
+.field>span,.field>label{color:var(--mut);font-size:12px}
+.inline{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.12);border:1px solid var(--line);transition:background .2s,transform .2s}
+.btn:hover{background:rgba(255,255,255,.22)}.btn:active{transform:scale(.97)}
+.btn.primary{background:#fff;color:#000;border-color:#fff}
+.btn.danger{color:#ffb4b4;border-color:rgba(255,107,107,.4)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.sm{padding:5px 9px;font-size:11px;border-radius:8px}
+.hintline{color:var(--mut);font-size:11px;line-height:1.5}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:99px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;background:rgba(255,255,255,.12);color:var(--mut);white-space:nowrap}
+.badge.live{background:rgba(94,227,161,.18);color:var(--ok)}
+.badge.err{background:rgba(255,107,107,.18);color:var(--bad)}
+.badge.warn{background:rgba(255,184,107,.18);color:var(--warn)}
+.badge.bridge{background:rgba(107,168,255,.18);color:#9cc4ff}
+.list{display:grid;gap:8px}
+.item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.18)}
+.item .meta{display:grid;gap:3px;min-width:0}
+.item .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .sub{color:var(--mut);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tabpane{display:grid;gap:14px}
+.tabpane[hidden]{display:none}
+details{border:1px solid var(--line);border-radius:12px;padding:10px;background:rgba(0,0,0,.14)}
+summary{cursor:pointer;color:var(--mut);font-size:12px}
+details .inner{margin-top:10px;display:grid;gap:10px}
+.mic-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid rgba(255,255,255,.08)}
+.mic-row:first-child{border-top:0}
+.meter{height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:5px}
+.meter>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#5ee3a1,#ffd166,#ff6b6b);border-radius:3px;transition:width .06s linear}
+.checkline{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:12px}
+.checkline input{width:auto}
+.notice{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,184,107,.35);background:rgba(255,184,107,.09);font-size:12px;line-height:1.5;color:#ffd9ad}
+.notice.info{border-color:rgba(107,168,255,.35);background:rgba(107,168,255,.09);color:#cfe3ff}
+.notice.bad{border-color:rgba(255,107,107,.35);background:rgba(255,107,107,.09);color:#ffc4c4}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}
+.codebox{letter-spacing:.24em;font-size:22px;font-weight:700;text-align:center;padding:10px;border-radius:12px;background:rgba(0,0,0,.3);border:1px solid var(--line)}
+.qr{display:grid;place-items:center;padding:10px;background:#fff;border-radius:12px;width:max-content;margin:0 auto}
+.qr canvas{display:block}
+
+@media(max-width:640px){body.on #sw,#fps{display:none}.ic{width:38px;height:38px}#mr,#gd,#fs,#integration{display:none}.seg button{padding:9px 11px}#sources,#tune,#integrations-panel{bottom:92px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -80,27 +125,38 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.35)}
 <video id="vid" playsinline muted style="position:fixed;width:2px;height:2px;opacity:0;pointer-events:none"></video>
 <div id="hint">Press start</div>
 
-<div class="glass ui" id="top"><span id="dot"></span><b>Live Feed Quantizer</b><span id="st">Ready</span><span id="fps"></span></div>
+<div class="glass" id="joinBar" hidden style="position:fixed;top:16px;right:16px;z-index:9;padding:12px 14px;border-radius:16px;display:flex;gap:12px;align-items:center;max-width:min(560px,94vw)">
+  <div style="min-width:0"><b id="joinTitle">Share this device</b><div id="joinNote" class="hintline">Allow camera and microphone to join the room.</div></div>
+  <button class="btn primary" id="joinShare">Share</button>
+</div>
+
+<div class="glass ui" id="top"><span id="dot"></span><b>Live Feed Quantizer</b><span id="st">Ready</span><span id="srcState"></span><span id="fps"></span></div>
 
 <div class="glass ui" id="tune">
   <div class="row"><label for="sPix">Pixels</label><input id="sPix" type="range" min="2" max="40" step="1" value="10"><output></output></div>
   <div class="row"><label for="sSens">Sense</label><input id="sSens" type="range" min=".3" max="3" step=".1" value="1"><output></output></div>
   <div class="row"><label for="sResp">Flow</label><input id="sResp" type="range" min=".03" max=".5" step=".01" value=".12"><output></output></div>
-  <div class="row"><label>Preset</label><input id="presetName" type="text" placeholder="name" style="flex:1"><button id="presetSave">Save</button></div>
-  <div class="row"><label>Load</label><select id="presetList" style="flex:1"></select><button id="presetLoad">Load</button></div>
+  <div class="row"><label>Preset</label><input id="presetName" type="text" placeholder="name" style="flex:1"><button class="btn sm" id="presetSave">Save</button></div>
+  <div class="row"><label>Load</label><select id="presetList" style="flex:1"></select><button class="btn sm" id="presetLoad">Load</button></div>
 </div>
 
-<div class="glass ui" id="devices">
-  <label>Camera<select id="camSelect"></select></label>
-  <label>Microphone<select id="micSelect"></select></label>
-  <small id="devNote"></small>
+<div class="glass ui" id="sources">
+  <div class="panel-head"><h3>Sources</h3><button class="ic" id="close-sources" title="Close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="seg" id="srcTabs" style="width:100%"></div>
+  <div id="srcTabContent"></div>
+</div>
+
+<div class="glass ui" id="integrations-panel">
+  <div class="panel-head"><h3>Integrations</h3><button class="ic" id="close-integrations" title="Close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="seg" id="integration-tabs" style="width:100%"></div>
+  <div id="integration-tab-content"></div>
 </div>
 
 <div class="glass ui" id="dock">
   <button class="go" id="go" aria-label="Start / stop"><svg class="p" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><svg class="s" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg></button>
   <div class="seg" id="seg"><i class="hl"></i></div>
   <div id="sw"></div>
-  <button class="ic" id="camBtn" title="Camera devices" aria-label="Camera"><svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.2"/></svg></button>
+  <button class="ic" id="srcBtn" title="Sources" aria-label="Sources"><svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.2"/></svg></button>
   <button class="ic" id="micBtn" title="Microphone (mute)" aria-label="Microphone"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg></button>
   <button class="ic" id="tb" title="Tune" aria-label="Tune"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button>
   <button class="ic on" id="mr" title="Mirror (M)" aria-label="Mirror"><svg viewBox="0 0 24 24"><path d="M12 3v18M8 7l-5 5 5 5zM16 7l5 5-5 5z"/></svg></button>
@@ -109,98 +165,2944 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.35)}
   <button class="ic" id="integration" title="Integrations" aria-label="Integrations"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.5"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1.5"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1.5"/><rect x="14" y="14" width="6.5" height="6.5" rx="1.5"/></svg></button>
 </div>
 
-<div class="glass ui" id="integrations-panel" style="position:fixed;right:22px;bottom:90px;width:320px;max-height:60vh;overflow:auto;padding:16px;z-index:7;opacity:0;pointer-events:none;transform:translateY(10px) scale(.94);transition:opacity .2s ease, transform .2s ease;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-    <h3 style="margin:0;font-size:16px;">Integrations</h3>
-    <button class="ic" id="close-integrations" title="Close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-  </div>
-  <div class="seg" id="integration-tabs" style="width:100%;margin-bottom:12px;"></div>
-  <div id="integration-tab-content"></div>
-</div>
+<script>
+/* qrcode-generator 1.4.4 ? MIT ? Kazuhiko Arase ? https://github.com/kazuhikoarase/qrcode-generator */
+//---------------------------------------------------------------------
+//
+// QR Code Generator for JavaScript
+//
+// Copyright (c) 2009 Kazuhiko Arase
+//
+// URL: http://www.d-project.com/
+//
+// Licensed under the MIT license:
+//  http://www.opensource.org/licenses/mit-license.php
+//
+// The word 'QR Code' is registered trademark of
+// DENSO WAVE INCORPORATED
+//  http://www.denso-wave.com/qrcode/faqpatent-e.html
+//
+//---------------------------------------------------------------------
+
+var qrcode = function() {
+
+  //---------------------------------------------------------------------
+  // qrcode
+  //---------------------------------------------------------------------
+
+  /**
+   * qrcode
+   * @param typeNumber 1 to 40
+   * @param errorCorrectionLevel 'L','M','Q','H'
+   */
+  var qrcode = function(typeNumber, errorCorrectionLevel) {
+
+    var PAD0 = 0xEC;
+    var PAD1 = 0x11;
+
+    var _typeNumber = typeNumber;
+    var _errorCorrectionLevel = QRErrorCorrectionLevel[errorCorrectionLevel];
+    var _modules = null;
+    var _moduleCount = 0;
+    var _dataCache = null;
+    var _dataList = [];
+
+    var _this = {};
+
+    var makeImpl = function(test, maskPattern) {
+
+      _moduleCount = _typeNumber * 4 + 17;
+      _modules = function(moduleCount) {
+        var modules = new Array(moduleCount);
+        for (var row = 0; row < moduleCount; row += 1) {
+          modules[row] = new Array(moduleCount);
+          for (var col = 0; col < moduleCount; col += 1) {
+            modules[row][col] = null;
+          }
+        }
+        return modules;
+      }(_moduleCount);
+
+      setupPositionProbePattern(0, 0);
+      setupPositionProbePattern(_moduleCount - 7, 0);
+      setupPositionProbePattern(0, _moduleCount - 7);
+      setupPositionAdjustPattern();
+      setupTimingPattern();
+      setupTypeInfo(test, maskPattern);
+
+      if (_typeNumber >= 7) {
+        setupTypeNumber(test);
+      }
+
+      if (_dataCache == null) {
+        _dataCache = createData(_typeNumber, _errorCorrectionLevel, _dataList);
+      }
+
+      mapData(_dataCache, maskPattern);
+    };
+
+    var setupPositionProbePattern = function(row, col) {
+
+      for (var r = -1; r <= 7; r += 1) {
+
+        if (row + r <= -1 || _moduleCount <= row + r) continue;
+
+        for (var c = -1; c <= 7; c += 1) {
+
+          if (col + c <= -1 || _moduleCount <= col + c) continue;
+
+          if ( (0 <= r && r <= 6 && (c == 0 || c == 6) )
+              || (0 <= c && c <= 6 && (r == 0 || r == 6) )
+              || (2 <= r && r <= 4 && 2 <= c && c <= 4) ) {
+            _modules[row + r][col + c] = true;
+          } else {
+            _modules[row + r][col + c] = false;
+          }
+        }
+      }
+    };
+
+    var getBestMaskPattern = function() {
+
+      var minLostPoint = 0;
+      var pattern = 0;
+
+      for (var i = 0; i < 8; i += 1) {
+
+        makeImpl(true, i);
+
+        var lostPoint = QRUtil.getLostPoint(_this);
+
+        if (i == 0 || minLostPoint > lostPoint) {
+          minLostPoint = lostPoint;
+          pattern = i;
+        }
+      }
+
+      return pattern;
+    };
+
+    var setupTimingPattern = function() {
+
+      for (var r = 8; r < _moduleCount - 8; r += 1) {
+        if (_modules[r][6] != null) {
+          continue;
+        }
+        _modules[r][6] = (r % 2 == 0);
+      }
+
+      for (var c = 8; c < _moduleCount - 8; c += 1) {
+        if (_modules[6][c] != null) {
+          continue;
+        }
+        _modules[6][c] = (c % 2 == 0);
+      }
+    };
+
+    var setupPositionAdjustPattern = function() {
+
+      var pos = QRUtil.getPatternPosition(_typeNumber);
+
+      for (var i = 0; i < pos.length; i += 1) {
+
+        for (var j = 0; j < pos.length; j += 1) {
+
+          var row = pos[i];
+          var col = pos[j];
+
+          if (_modules[row][col] != null) {
+            continue;
+          }
+
+          for (var r = -2; r <= 2; r += 1) {
+
+            for (var c = -2; c <= 2; c += 1) {
+
+              if (r == -2 || r == 2 || c == -2 || c == 2
+                  || (r == 0 && c == 0) ) {
+                _modules[row + r][col + c] = true;
+              } else {
+                _modules[row + r][col + c] = false;
+              }
+            }
+          }
+        }
+      }
+    };
+
+    var setupTypeNumber = function(test) {
+
+      var bits = QRUtil.getBCHTypeNumber(_typeNumber);
+
+      for (var i = 0; i < 18; i += 1) {
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+        _modules[Math.floor(i / 3)][i % 3 + _moduleCount - 8 - 3] = mod;
+      }
+
+      for (var i = 0; i < 18; i += 1) {
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+        _modules[i % 3 + _moduleCount - 8 - 3][Math.floor(i / 3)] = mod;
+      }
+    };
+
+    var setupTypeInfo = function(test, maskPattern) {
+
+      var data = (_errorCorrectionLevel << 3) | maskPattern;
+      var bits = QRUtil.getBCHTypeInfo(data);
+
+      // vertical
+      for (var i = 0; i < 15; i += 1) {
+
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+
+        if (i < 6) {
+          _modules[i][8] = mod;
+        } else if (i < 8) {
+          _modules[i + 1][8] = mod;
+        } else {
+          _modules[_moduleCount - 15 + i][8] = mod;
+        }
+      }
+
+      // horizontal
+      for (var i = 0; i < 15; i += 1) {
+
+        var mod = (!test && ( (bits >> i) & 1) == 1);
+
+        if (i < 8) {
+          _modules[8][_moduleCount - i - 1] = mod;
+        } else if (i < 9) {
+          _modules[8][15 - i - 1 + 1] = mod;
+        } else {
+          _modules[8][15 - i - 1] = mod;
+        }
+      }
+
+      // fixed module
+      _modules[_moduleCount - 8][8] = (!test);
+    };
+
+    var mapData = function(data, maskPattern) {
+
+      var inc = -1;
+      var row = _moduleCount - 1;
+      var bitIndex = 7;
+      var byteIndex = 0;
+      var maskFunc = QRUtil.getMaskFunction(maskPattern);
+
+      for (var col = _moduleCount - 1; col > 0; col -= 2) {
+
+        if (col == 6) col -= 1;
+
+        while (true) {
+
+          for (var c = 0; c < 2; c += 1) {
+
+            if (_modules[row][col - c] == null) {
+
+              var dark = false;
+
+              if (byteIndex < data.length) {
+                dark = ( ( (data[byteIndex] >>> bitIndex) & 1) == 1);
+              }
+
+              var mask = maskFunc(row, col - c);
+
+              if (mask) {
+                dark = !dark;
+              }
+
+              _modules[row][col - c] = dark;
+              bitIndex -= 1;
+
+              if (bitIndex == -1) {
+                byteIndex += 1;
+                bitIndex = 7;
+              }
+            }
+          }
+
+          row += inc;
+
+          if (row < 0 || _moduleCount <= row) {
+            row -= inc;
+            inc = -inc;
+            break;
+          }
+        }
+      }
+    };
+
+    var createBytes = function(buffer, rsBlocks) {
+
+      var offset = 0;
+
+      var maxDcCount = 0;
+      var maxEcCount = 0;
+
+      var dcdata = new Array(rsBlocks.length);
+      var ecdata = new Array(rsBlocks.length);
+
+      for (var r = 0; r < rsBlocks.length; r += 1) {
+
+        var dcCount = rsBlocks[r].dataCount;
+        var ecCount = rsBlocks[r].totalCount - dcCount;
+
+        maxDcCount = Math.max(maxDcCount, dcCount);
+        maxEcCount = Math.max(maxEcCount, ecCount);
+
+        dcdata[r] = new Array(dcCount);
+
+        for (var i = 0; i < dcdata[r].length; i += 1) {
+          dcdata[r][i] = 0xff & buffer.getBuffer()[i + offset];
+        }
+        offset += dcCount;
+
+        var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+        var rawPoly = qrPolynomial(dcdata[r], rsPoly.getLength() - 1);
+
+        var modPoly = rawPoly.mod(rsPoly);
+        ecdata[r] = new Array(rsPoly.getLength() - 1);
+        for (var i = 0; i < ecdata[r].length; i += 1) {
+          var modIndex = i + modPoly.getLength() - ecdata[r].length;
+          ecdata[r][i] = (modIndex >= 0)? modPoly.getAt(modIndex) : 0;
+        }
+      }
+
+      var totalCodeCount = 0;
+      for (var i = 0; i < rsBlocks.length; i += 1) {
+        totalCodeCount += rsBlocks[i].totalCount;
+      }
+
+      var data = new Array(totalCodeCount);
+      var index = 0;
+
+      for (var i = 0; i < maxDcCount; i += 1) {
+        for (var r = 0; r < rsBlocks.length; r += 1) {
+          if (i < dcdata[r].length) {
+            data[index] = dcdata[r][i];
+            index += 1;
+          }
+        }
+      }
+
+      for (var i = 0; i < maxEcCount; i += 1) {
+        for (var r = 0; r < rsBlocks.length; r += 1) {
+          if (i < ecdata[r].length) {
+            data[index] = ecdata[r][i];
+            index += 1;
+          }
+        }
+      }
+
+      return data;
+    };
+
+    var createData = function(typeNumber, errorCorrectionLevel, dataList) {
+
+      var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectionLevel);
+
+      var buffer = qrBitBuffer();
+
+      for (var i = 0; i < dataList.length; i += 1) {
+        var data = dataList[i];
+        buffer.put(data.getMode(), 4);
+        buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber) );
+        data.write(buffer);
+      }
+
+      // calc num max data.
+      var totalDataCount = 0;
+      for (var i = 0; i < rsBlocks.length; i += 1) {
+        totalDataCount += rsBlocks[i].dataCount;
+      }
+
+      if (buffer.getLengthInBits() > totalDataCount * 8) {
+        throw 'code length overflow. ('
+          + buffer.getLengthInBits()
+          + '>'
+          + totalDataCount * 8
+          + ')';
+      }
+
+      // end code
+      if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+        buffer.put(0, 4);
+      }
+
+      // padding
+      while (buffer.getLengthInBits() % 8 != 0) {
+        buffer.putBit(false);
+      }
+
+      // padding
+      while (true) {
+
+        if (buffer.getLengthInBits() >= totalDataCount * 8) {
+          break;
+        }
+        buffer.put(PAD0, 8);
+
+        if (buffer.getLengthInBits() >= totalDataCount * 8) {
+          break;
+        }
+        buffer.put(PAD1, 8);
+      }
+
+      return createBytes(buffer, rsBlocks);
+    };
+
+    _this.addData = function(data, mode) {
+
+      mode = mode || 'Byte';
+
+      var newData = null;
+
+      switch(mode) {
+      case 'Numeric' :
+        newData = qrNumber(data);
+        break;
+      case 'Alphanumeric' :
+        newData = qrAlphaNum(data);
+        break;
+      case 'Byte' :
+        newData = qr8BitByte(data);
+        break;
+      case 'Kanji' :
+        newData = qrKanji(data);
+        break;
+      default :
+        throw 'mode:' + mode;
+      }
+
+      _dataList.push(newData);
+      _dataCache = null;
+    };
+
+    _this.isDark = function(row, col) {
+      if (row < 0 || _moduleCount <= row || col < 0 || _moduleCount <= col) {
+        throw row + ',' + col;
+      }
+      return _modules[row][col];
+    };
+
+    _this.getModuleCount = function() {
+      return _moduleCount;
+    };
+
+    _this.make = function() {
+      if (_typeNumber < 1) {
+        var typeNumber = 1;
+
+        for (; typeNumber < 40; typeNumber++) {
+          var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, _errorCorrectionLevel);
+          var buffer = qrBitBuffer();
+
+          for (var i = 0; i < _dataList.length; i++) {
+            var data = _dataList[i];
+            buffer.put(data.getMode(), 4);
+            buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber) );
+            data.write(buffer);
+          }
+
+          var totalDataCount = 0;
+          for (var i = 0; i < rsBlocks.length; i++) {
+            totalDataCount += rsBlocks[i].dataCount;
+          }
+
+          if (buffer.getLengthInBits() <= totalDataCount * 8) {
+            break;
+          }
+        }
+
+        _typeNumber = typeNumber;
+      }
+
+      makeImpl(false, getBestMaskPattern() );
+    };
+
+    _this.createTableTag = function(cellSize, margin) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var qrHtml = '';
+
+      qrHtml += '<table style="';
+      qrHtml += ' border-width: 0px; border-style: none;';
+      qrHtml += ' border-collapse: collapse;';
+      qrHtml += ' padding: 0px; margin: ' + margin + 'px;';
+      qrHtml += '">';
+      qrHtml += '<tbody>';
+
+      for (var r = 0; r < _this.getModuleCount(); r += 1) {
+
+        qrHtml += '<tr>';
+
+        for (var c = 0; c < _this.getModuleCount(); c += 1) {
+          qrHtml += '<td style="';
+          qrHtml += ' border-width: 0px; border-style: none;';
+          qrHtml += ' border-collapse: collapse;';
+          qrHtml += ' padding: 0px; margin: 0px;';
+          qrHtml += ' width: ' + cellSize + 'px;';
+          qrHtml += ' height: ' + cellSize + 'px;';
+          qrHtml += ' background-color: ';
+          qrHtml += _this.isDark(r, c)? '#000000' : '#ffffff';
+          qrHtml += ';';
+          qrHtml += '"/>';
+        }
+
+        qrHtml += '</tr>';
+      }
+
+      qrHtml += '</tbody>';
+      qrHtml += '</table>';
+
+      return qrHtml;
+    };
+
+    _this.createSvgTag = function(cellSize, margin, alt, title) {
+
+      var opts = {};
+      if (typeof arguments[0] == 'object') {
+        // Called by options.
+        opts = arguments[0];
+        // overwrite cellSize and margin.
+        cellSize = opts.cellSize;
+        margin = opts.margin;
+        alt = opts.alt;
+        title = opts.title;
+      }
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      // Compose alt property surrogate
+      alt = (typeof alt === 'string') ? {text: alt} : alt || {};
+      alt.text = alt.text || null;
+      alt.id = (alt.text) ? alt.id || 'qrcode-description' : null;
+
+      // Compose title property surrogate
+      title = (typeof title === 'string') ? {text: title} : title || {};
+      title.text = title.text || null;
+      title.id = (title.text) ? title.id || 'qrcode-title' : null;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var c, mc, r, mr, qrSvg='', rect;
+
+      rect = 'l' + cellSize + ',0 0,' + cellSize +
+        ' -' + cellSize + ',0 0,-' + cellSize + 'z ';
+
+      qrSvg += '<svg version="1.1" xmlns="http://www.w3.org/2000/svg"';
+      qrSvg += !opts.scalable ? ' width="' + size + 'px" height="' + size + 'px"' : '';
+      qrSvg += ' viewBox="0 0 ' + size + ' ' + size + '" ';
+      qrSvg += ' preserveAspectRatio="xMinYMin meet"';
+      qrSvg += (title.text || alt.text) ? ' role="img" aria-labelledby="' +
+          escapeXml([title.id, alt.id].join(' ').trim() ) + '"' : '';
+      qrSvg += '>';
+      qrSvg += (title.text) ? '<title id="' + escapeXml(title.id) + '">' +
+          escapeXml(title.text) + '</title>' : '';
+      qrSvg += (alt.text) ? '<description id="' + escapeXml(alt.id) + '">' +
+          escapeXml(alt.text) + '</description>' : '';
+      qrSvg += '<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>';
+      qrSvg += '<path d="';
+
+      for (r = 0; r < _this.getModuleCount(); r += 1) {
+        mr = r * cellSize + margin;
+        for (c = 0; c < _this.getModuleCount(); c += 1) {
+          if (_this.isDark(r, c) ) {
+            mc = c*cellSize+margin;
+            qrSvg += 'M' + mc + ',' + mr + rect;
+          }
+        }
+      }
+
+      qrSvg += '" stroke="transparent" fill="black"/>';
+      qrSvg += '</svg>';
+
+      return qrSvg;
+    };
+
+    _this.createDataURL = function(cellSize, margin) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      return createDataURL(size, size, function(x, y) {
+        if (min <= x && x < max && min <= y && y < max) {
+          var c = Math.floor( (x - min) / cellSize);
+          var r = Math.floor( (y - min) / cellSize);
+          return _this.isDark(r, c)? 0 : 1;
+        } else {
+          return 1;
+        }
+      } );
+    };
+
+    _this.createImgTag = function(cellSize, margin, alt) {
+
+      cellSize = cellSize || 2;
+      margin = (typeof margin == 'undefined')? cellSize * 4 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+
+      var img = '';
+      img += '<img';
+      img += '\u0020src="';
+      img += _this.createDataURL(cellSize, margin);
+      img += '"';
+      img += '\u0020width="';
+      img += size;
+      img += '"';
+      img += '\u0020height="';
+      img += size;
+      img += '"';
+      if (alt) {
+        img += '\u0020alt="';
+        img += escapeXml(alt);
+        img += '"';
+      }
+      img += '/>';
+
+      return img;
+    };
+
+    var escapeXml = function(s) {
+      var escaped = '';
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charAt(i);
+        switch(c) {
+        case '<': escaped += '&lt;'; break;
+        case '>': escaped += '&gt;'; break;
+        case '&': escaped += '&amp;'; break;
+        case '"': escaped += '&quot;'; break;
+        default : escaped += c; break;
+        }
+      }
+      return escaped;
+    };
+
+    var _createHalfASCII = function(margin) {
+      var cellSize = 1;
+      margin = (typeof margin == 'undefined')? cellSize * 2 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      var y, x, r1, r2, p;
+
+      var blocks = {
+        '██': '█',
+        '█ ': '▀',
+        ' █': '▄',
+        '  ': ' '
+      };
+
+      var blocksLastLineNoMargin = {
+        '██': '▀',
+        '█ ': '▀',
+        ' █': ' ',
+        '  ': ' '
+      };
+
+      var ascii = '';
+      for (y = 0; y < size; y += 2) {
+        r1 = Math.floor((y - min) / cellSize);
+        r2 = Math.floor((y + 1 - min) / cellSize);
+        for (x = 0; x < size; x += 1) {
+          p = '█';
+
+          if (min <= x && x < max && min <= y && y < max && _this.isDark(r1, Math.floor((x - min) / cellSize))) {
+            p = ' ';
+          }
+
+          if (min <= x && x < max && min <= y+1 && y+1 < max && _this.isDark(r2, Math.floor((x - min) / cellSize))) {
+            p += ' ';
+          }
+          else {
+            p += '█';
+          }
+
+          // Output 2 characters per pixel, to create full square. 1 character per pixels gives only half width of square.
+          ascii += (margin < 1 && y+1 >= max) ? blocksLastLineNoMargin[p] : blocks[p];
+        }
+
+        ascii += '\n';
+      }
+
+      if (size % 2 && margin > 0) {
+        return ascii.substring(0, ascii.length - size - 1) + Array(size+1).join('▀');
+      }
+
+      return ascii.substring(0, ascii.length-1);
+    };
+
+    _this.createASCII = function(cellSize, margin) {
+      cellSize = cellSize || 1;
+
+      if (cellSize < 2) {
+        return _createHalfASCII(margin);
+      }
+
+      cellSize -= 1;
+      margin = (typeof margin == 'undefined')? cellSize * 2 : margin;
+
+      var size = _this.getModuleCount() * cellSize + margin * 2;
+      var min = margin;
+      var max = size - margin;
+
+      var y, x, r, p;
+
+      var white = Array(cellSize+1).join('██');
+      var black = Array(cellSize+1).join('  ');
+
+      var ascii = '';
+      var line = '';
+      for (y = 0; y < size; y += 1) {
+        r = Math.floor( (y - min) / cellSize);
+        line = '';
+        for (x = 0; x < size; x += 1) {
+          p = 1;
+
+          if (min <= x && x < max && min <= y && y < max && _this.isDark(r, Math.floor((x - min) / cellSize))) {
+            p = 0;
+          }
+
+          // Output 2 characters per pixel, to create full square. 1 character per pixels gives only half width of square.
+          line += p ? white : black;
+        }
+
+        for (r = 0; r < cellSize; r += 1) {
+          ascii += line + '\n';
+        }
+      }
+
+      return ascii.substring(0, ascii.length-1);
+    };
+
+    _this.renderTo2dContext = function(context, cellSize) {
+      cellSize = cellSize || 2;
+      var length = _this.getModuleCount();
+      for (var row = 0; row < length; row++) {
+        for (var col = 0; col < length; col++) {
+          context.fillStyle = _this.isDark(row, col) ? 'black' : 'white';
+          context.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrcode.stringToBytes
+  //---------------------------------------------------------------------
+
+  qrcode.stringToBytesFuncs = {
+    'default' : function(s) {
+      var bytes = [];
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charCodeAt(i);
+        bytes.push(c & 0xff);
+      }
+      return bytes;
+    }
+  };
+
+  qrcode.stringToBytes = qrcode.stringToBytesFuncs['default'];
+
+  //---------------------------------------------------------------------
+  // qrcode.createStringToBytes
+  //---------------------------------------------------------------------
+
+  /**
+   * @param unicodeData base64 string of byte array.
+   * [16bit Unicode],[16bit Bytes], ...
+   * @param numChars
+   */
+  qrcode.createStringToBytes = function(unicodeData, numChars) {
+
+    // create conversion map.
+
+    var unicodeMap = function() {
+
+      var bin = base64DecodeInputStream(unicodeData);
+      var read = function() {
+        var b = bin.read();
+        if (b == -1) throw 'eof';
+        return b;
+      };
+
+      var count = 0;
+      var unicodeMap = {};
+      while (true) {
+        var b0 = bin.read();
+        if (b0 == -1) break;
+        var b1 = read();
+        var b2 = read();
+        var b3 = read();
+        var k = String.fromCharCode( (b0 << 8) | b1);
+        var v = (b2 << 8) | b3;
+        unicodeMap[k] = v;
+        count += 1;
+      }
+      if (count != numChars) {
+        throw count + ' != ' + numChars;
+      }
+
+      return unicodeMap;
+    }();
+
+    var unknownChar = '?'.charCodeAt(0);
+
+    return function(s) {
+      var bytes = [];
+      for (var i = 0; i < s.length; i += 1) {
+        var c = s.charCodeAt(i);
+        if (c < 128) {
+          bytes.push(c);
+        } else {
+          var b = unicodeMap[s.charAt(i)];
+          if (typeof b == 'number') {
+            if ( (b & 0xff) == b) {
+              // 1byte
+              bytes.push(b);
+            } else {
+              // 2bytes
+              bytes.push(b >>> 8);
+              bytes.push(b & 0xff);
+            }
+          } else {
+            bytes.push(unknownChar);
+          }
+        }
+      }
+      return bytes;
+    };
+  };
+
+  //---------------------------------------------------------------------
+  // QRMode
+  //---------------------------------------------------------------------
+
+  var QRMode = {
+    MODE_NUMBER :    1 << 0,
+    MODE_ALPHA_NUM : 1 << 1,
+    MODE_8BIT_BYTE : 1 << 2,
+    MODE_KANJI :     1 << 3
+  };
+
+  //---------------------------------------------------------------------
+  // QRErrorCorrectionLevel
+  //---------------------------------------------------------------------
+
+  var QRErrorCorrectionLevel = {
+    L : 1,
+    M : 0,
+    Q : 3,
+    H : 2
+  };
+
+  //---------------------------------------------------------------------
+  // QRMaskPattern
+  //---------------------------------------------------------------------
+
+  var QRMaskPattern = {
+    PATTERN000 : 0,
+    PATTERN001 : 1,
+    PATTERN010 : 2,
+    PATTERN011 : 3,
+    PATTERN100 : 4,
+    PATTERN101 : 5,
+    PATTERN110 : 6,
+    PATTERN111 : 7
+  };
+
+  //---------------------------------------------------------------------
+  // QRUtil
+  //---------------------------------------------------------------------
+
+  var QRUtil = function() {
+
+    var PATTERN_POSITION_TABLE = [
+      [],
+      [6, 18],
+      [6, 22],
+      [6, 26],
+      [6, 30],
+      [6, 34],
+      [6, 22, 38],
+      [6, 24, 42],
+      [6, 26, 46],
+      [6, 28, 50],
+      [6, 30, 54],
+      [6, 32, 58],
+      [6, 34, 62],
+      [6, 26, 46, 66],
+      [6, 26, 48, 70],
+      [6, 26, 50, 74],
+      [6, 30, 54, 78],
+      [6, 30, 56, 82],
+      [6, 30, 58, 86],
+      [6, 34, 62, 90],
+      [6, 28, 50, 72, 94],
+      [6, 26, 50, 74, 98],
+      [6, 30, 54, 78, 102],
+      [6, 28, 54, 80, 106],
+      [6, 32, 58, 84, 110],
+      [6, 30, 58, 86, 114],
+      [6, 34, 62, 90, 118],
+      [6, 26, 50, 74, 98, 122],
+      [6, 30, 54, 78, 102, 126],
+      [6, 26, 52, 78, 104, 130],
+      [6, 30, 56, 82, 108, 134],
+      [6, 34, 60, 86, 112, 138],
+      [6, 30, 58, 86, 114, 142],
+      [6, 34, 62, 90, 118, 146],
+      [6, 30, 54, 78, 102, 126, 150],
+      [6, 24, 50, 76, 102, 128, 154],
+      [6, 28, 54, 80, 106, 132, 158],
+      [6, 32, 58, 84, 110, 136, 162],
+      [6, 26, 54, 82, 110, 138, 166],
+      [6, 30, 58, 86, 114, 142, 170]
+    ];
+    var G15 = (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0);
+    var G18 = (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0);
+    var G15_MASK = (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1);
+
+    var _this = {};
+
+    var getBCHDigit = function(data) {
+      var digit = 0;
+      while (data != 0) {
+        digit += 1;
+        data >>>= 1;
+      }
+      return digit;
+    };
+
+    _this.getBCHTypeInfo = function(data) {
+      var d = data << 10;
+      while (getBCHDigit(d) - getBCHDigit(G15) >= 0) {
+        d ^= (G15 << (getBCHDigit(d) - getBCHDigit(G15) ) );
+      }
+      return ( (data << 10) | d) ^ G15_MASK;
+    };
+
+    _this.getBCHTypeNumber = function(data) {
+      var d = data << 12;
+      while (getBCHDigit(d) - getBCHDigit(G18) >= 0) {
+        d ^= (G18 << (getBCHDigit(d) - getBCHDigit(G18) ) );
+      }
+      return (data << 12) | d;
+    };
+
+    _this.getPatternPosition = function(typeNumber) {
+      return PATTERN_POSITION_TABLE[typeNumber - 1];
+    };
+
+    _this.getMaskFunction = function(maskPattern) {
+
+      switch (maskPattern) {
+
+      case QRMaskPattern.PATTERN000 :
+        return function(i, j) { return (i + j) % 2 == 0; };
+      case QRMaskPattern.PATTERN001 :
+        return function(i, j) { return i % 2 == 0; };
+      case QRMaskPattern.PATTERN010 :
+        return function(i, j) { return j % 3 == 0; };
+      case QRMaskPattern.PATTERN011 :
+        return function(i, j) { return (i + j) % 3 == 0; };
+      case QRMaskPattern.PATTERN100 :
+        return function(i, j) { return (Math.floor(i / 2) + Math.floor(j / 3) ) % 2 == 0; };
+      case QRMaskPattern.PATTERN101 :
+        return function(i, j) { return (i * j) % 2 + (i * j) % 3 == 0; };
+      case QRMaskPattern.PATTERN110 :
+        return function(i, j) { return ( (i * j) % 2 + (i * j) % 3) % 2 == 0; };
+      case QRMaskPattern.PATTERN111 :
+        return function(i, j) { return ( (i * j) % 3 + (i + j) % 2) % 2 == 0; };
+
+      default :
+        throw 'bad maskPattern:' + maskPattern;
+      }
+    };
+
+    _this.getErrorCorrectPolynomial = function(errorCorrectLength) {
+      var a = qrPolynomial([1], 0);
+      for (var i = 0; i < errorCorrectLength; i += 1) {
+        a = a.multiply(qrPolynomial([1, QRMath.gexp(i)], 0) );
+      }
+      return a;
+    };
+
+    _this.getLengthInBits = function(mode, type) {
+
+      if (1 <= type && type < 10) {
+
+        // 1 - 9
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 10;
+        case QRMode.MODE_ALPHA_NUM : return 9;
+        case QRMode.MODE_8BIT_BYTE : return 8;
+        case QRMode.MODE_KANJI     : return 8;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else if (type < 27) {
+
+        // 10 - 26
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 12;
+        case QRMode.MODE_ALPHA_NUM : return 11;
+        case QRMode.MODE_8BIT_BYTE : return 16;
+        case QRMode.MODE_KANJI     : return 10;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else if (type < 41) {
+
+        // 27 - 40
+
+        switch(mode) {
+        case QRMode.MODE_NUMBER    : return 14;
+        case QRMode.MODE_ALPHA_NUM : return 13;
+        case QRMode.MODE_8BIT_BYTE : return 16;
+        case QRMode.MODE_KANJI     : return 12;
+        default :
+          throw 'mode:' + mode;
+        }
+
+      } else {
+        throw 'type:' + type;
+      }
+    };
+
+    _this.getLostPoint = function(qrcode) {
+
+      var moduleCount = qrcode.getModuleCount();
+
+      var lostPoint = 0;
+
+      // LEVEL1
+
+      for (var row = 0; row < moduleCount; row += 1) {
+        for (var col = 0; col < moduleCount; col += 1) {
+
+          var sameCount = 0;
+          var dark = qrcode.isDark(row, col);
+
+          for (var r = -1; r <= 1; r += 1) {
+
+            if (row + r < 0 || moduleCount <= row + r) {
+              continue;
+            }
+
+            for (var c = -1; c <= 1; c += 1) {
+
+              if (col + c < 0 || moduleCount <= col + c) {
+                continue;
+              }
+
+              if (r == 0 && c == 0) {
+                continue;
+              }
+
+              if (dark == qrcode.isDark(row + r, col + c) ) {
+                sameCount += 1;
+              }
+            }
+          }
+
+          if (sameCount > 5) {
+            lostPoint += (3 + sameCount - 5);
+          }
+        }
+      };
+
+      // LEVEL2
+
+      for (var row = 0; row < moduleCount - 1; row += 1) {
+        for (var col = 0; col < moduleCount - 1; col += 1) {
+          var count = 0;
+          if (qrcode.isDark(row, col) ) count += 1;
+          if (qrcode.isDark(row + 1, col) ) count += 1;
+          if (qrcode.isDark(row, col + 1) ) count += 1;
+          if (qrcode.isDark(row + 1, col + 1) ) count += 1;
+          if (count == 0 || count == 4) {
+            lostPoint += 3;
+          }
+        }
+      }
+
+      // LEVEL3
+
+      for (var row = 0; row < moduleCount; row += 1) {
+        for (var col = 0; col < moduleCount - 6; col += 1) {
+          if (qrcode.isDark(row, col)
+              && !qrcode.isDark(row, col + 1)
+              &&  qrcode.isDark(row, col + 2)
+              &&  qrcode.isDark(row, col + 3)
+              &&  qrcode.isDark(row, col + 4)
+              && !qrcode.isDark(row, col + 5)
+              &&  qrcode.isDark(row, col + 6) ) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      for (var col = 0; col < moduleCount; col += 1) {
+        for (var row = 0; row < moduleCount - 6; row += 1) {
+          if (qrcode.isDark(row, col)
+              && !qrcode.isDark(row + 1, col)
+              &&  qrcode.isDark(row + 2, col)
+              &&  qrcode.isDark(row + 3, col)
+              &&  qrcode.isDark(row + 4, col)
+              && !qrcode.isDark(row + 5, col)
+              &&  qrcode.isDark(row + 6, col) ) {
+            lostPoint += 40;
+          }
+        }
+      }
+
+      // LEVEL4
+
+      var darkCount = 0;
+
+      for (var col = 0; col < moduleCount; col += 1) {
+        for (var row = 0; row < moduleCount; row += 1) {
+          if (qrcode.isDark(row, col) ) {
+            darkCount += 1;
+          }
+        }
+      }
+
+      var ratio = Math.abs(100 * darkCount / moduleCount / moduleCount - 50) / 5;
+      lostPoint += ratio * 10;
+
+      return lostPoint;
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // QRMath
+  //---------------------------------------------------------------------
+
+  var QRMath = function() {
+
+    var EXP_TABLE = new Array(256);
+    var LOG_TABLE = new Array(256);
+
+    // initialize tables
+    for (var i = 0; i < 8; i += 1) {
+      EXP_TABLE[i] = 1 << i;
+    }
+    for (var i = 8; i < 256; i += 1) {
+      EXP_TABLE[i] = EXP_TABLE[i - 4]
+        ^ EXP_TABLE[i - 5]
+        ^ EXP_TABLE[i - 6]
+        ^ EXP_TABLE[i - 8];
+    }
+    for (var i = 0; i < 255; i += 1) {
+      LOG_TABLE[EXP_TABLE[i] ] = i;
+    }
+
+    var _this = {};
+
+    _this.glog = function(n) {
+
+      if (n < 1) {
+        throw 'glog(' + n + ')';
+      }
+
+      return LOG_TABLE[n];
+    };
+
+    _this.gexp = function(n) {
+
+      while (n < 0) {
+        n += 255;
+      }
+
+      while (n >= 256) {
+        n -= 255;
+      }
+
+      return EXP_TABLE[n];
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // qrPolynomial
+  //---------------------------------------------------------------------
+
+  function qrPolynomial(num, shift) {
+
+    if (typeof num.length == 'undefined') {
+      throw num.length + '/' + shift;
+    }
+
+    var _num = function() {
+      var offset = 0;
+      while (offset < num.length && num[offset] == 0) {
+        offset += 1;
+      }
+      var _num = new Array(num.length - offset + shift);
+      for (var i = 0; i < num.length - offset; i += 1) {
+        _num[i] = num[i + offset];
+      }
+      return _num;
+    }();
+
+    var _this = {};
+
+    _this.getAt = function(index) {
+      return _num[index];
+    };
+
+    _this.getLength = function() {
+      return _num.length;
+    };
+
+    _this.multiply = function(e) {
+
+      var num = new Array(_this.getLength() + e.getLength() - 1);
+
+      for (var i = 0; i < _this.getLength(); i += 1) {
+        for (var j = 0; j < e.getLength(); j += 1) {
+          num[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i) ) + QRMath.glog(e.getAt(j) ) );
+        }
+      }
+
+      return qrPolynomial(num, 0);
+    };
+
+    _this.mod = function(e) {
+
+      if (_this.getLength() - e.getLength() < 0) {
+        return _this;
+      }
+
+      var ratio = QRMath.glog(_this.getAt(0) ) - QRMath.glog(e.getAt(0) );
+
+      var num = new Array(_this.getLength() );
+      for (var i = 0; i < _this.getLength(); i += 1) {
+        num[i] = _this.getAt(i);
+      }
+
+      for (var i = 0; i < e.getLength(); i += 1) {
+        num[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i) ) + ratio);
+      }
+
+      // recursive call
+      return qrPolynomial(num, 0).mod(e);
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // QRRSBlock
+  //---------------------------------------------------------------------
+
+  var QRRSBlock = function() {
+
+    var RS_BLOCK_TABLE = [
+
+      // L
+      // M
+      // Q
+      // H
+
+      // 1
+      [1, 26, 19],
+      [1, 26, 16],
+      [1, 26, 13],
+      [1, 26, 9],
+
+      // 2
+      [1, 44, 34],
+      [1, 44, 28],
+      [1, 44, 22],
+      [1, 44, 16],
+
+      // 3
+      [1, 70, 55],
+      [1, 70, 44],
+      [2, 35, 17],
+      [2, 35, 13],
+
+      // 4
+      [1, 100, 80],
+      [2, 50, 32],
+      [2, 50, 24],
+      [4, 25, 9],
+
+      // 5
+      [1, 134, 108],
+      [2, 67, 43],
+      [2, 33, 15, 2, 34, 16],
+      [2, 33, 11, 2, 34, 12],
+
+      // 6
+      [2, 86, 68],
+      [4, 43, 27],
+      [4, 43, 19],
+      [4, 43, 15],
+
+      // 7
+      [2, 98, 78],
+      [4, 49, 31],
+      [2, 32, 14, 4, 33, 15],
+      [4, 39, 13, 1, 40, 14],
+
+      // 8
+      [2, 121, 97],
+      [2, 60, 38, 2, 61, 39],
+      [4, 40, 18, 2, 41, 19],
+      [4, 40, 14, 2, 41, 15],
+
+      // 9
+      [2, 146, 116],
+      [3, 58, 36, 2, 59, 37],
+      [4, 36, 16, 4, 37, 17],
+      [4, 36, 12, 4, 37, 13],
+
+      // 10
+      [2, 86, 68, 2, 87, 69],
+      [4, 69, 43, 1, 70, 44],
+      [6, 43, 19, 2, 44, 20],
+      [6, 43, 15, 2, 44, 16],
+
+      // 11
+      [4, 101, 81],
+      [1, 80, 50, 4, 81, 51],
+      [4, 50, 22, 4, 51, 23],
+      [3, 36, 12, 8, 37, 13],
+
+      // 12
+      [2, 116, 92, 2, 117, 93],
+      [6, 58, 36, 2, 59, 37],
+      [4, 46, 20, 6, 47, 21],
+      [7, 42, 14, 4, 43, 15],
+
+      // 13
+      [4, 133, 107],
+      [8, 59, 37, 1, 60, 38],
+      [8, 44, 20, 4, 45, 21],
+      [12, 33, 11, 4, 34, 12],
+
+      // 14
+      [3, 145, 115, 1, 146, 116],
+      [4, 64, 40, 5, 65, 41],
+      [11, 36, 16, 5, 37, 17],
+      [11, 36, 12, 5, 37, 13],
+
+      // 15
+      [5, 109, 87, 1, 110, 88],
+      [5, 65, 41, 5, 66, 42],
+      [5, 54, 24, 7, 55, 25],
+      [11, 36, 12, 7, 37, 13],
+
+      // 16
+      [5, 122, 98, 1, 123, 99],
+      [7, 73, 45, 3, 74, 46],
+      [15, 43, 19, 2, 44, 20],
+      [3, 45, 15, 13, 46, 16],
+
+      // 17
+      [1, 135, 107, 5, 136, 108],
+      [10, 74, 46, 1, 75, 47],
+      [1, 50, 22, 15, 51, 23],
+      [2, 42, 14, 17, 43, 15],
+
+      // 18
+      [5, 150, 120, 1, 151, 121],
+      [9, 69, 43, 4, 70, 44],
+      [17, 50, 22, 1, 51, 23],
+      [2, 42, 14, 19, 43, 15],
+
+      // 19
+      [3, 141, 113, 4, 142, 114],
+      [3, 70, 44, 11, 71, 45],
+      [17, 47, 21, 4, 48, 22],
+      [9, 39, 13, 16, 40, 14],
+
+      // 20
+      [3, 135, 107, 5, 136, 108],
+      [3, 67, 41, 13, 68, 42],
+      [15, 54, 24, 5, 55, 25],
+      [15, 43, 15, 10, 44, 16],
+
+      // 21
+      [4, 144, 116, 4, 145, 117],
+      [17, 68, 42],
+      [17, 50, 22, 6, 51, 23],
+      [19, 46, 16, 6, 47, 17],
+
+      // 22
+      [2, 139, 111, 7, 140, 112],
+      [17, 74, 46],
+      [7, 54, 24, 16, 55, 25],
+      [34, 37, 13],
+
+      // 23
+      [4, 151, 121, 5, 152, 122],
+      [4, 75, 47, 14, 76, 48],
+      [11, 54, 24, 14, 55, 25],
+      [16, 45, 15, 14, 46, 16],
+
+      // 24
+      [6, 147, 117, 4, 148, 118],
+      [6, 73, 45, 14, 74, 46],
+      [11, 54, 24, 16, 55, 25],
+      [30, 46, 16, 2, 47, 17],
+
+      // 25
+      [8, 132, 106, 4, 133, 107],
+      [8, 75, 47, 13, 76, 48],
+      [7, 54, 24, 22, 55, 25],
+      [22, 45, 15, 13, 46, 16],
+
+      // 26
+      [10, 142, 114, 2, 143, 115],
+      [19, 74, 46, 4, 75, 47],
+      [28, 50, 22, 6, 51, 23],
+      [33, 46, 16, 4, 47, 17],
+
+      // 27
+      [8, 152, 122, 4, 153, 123],
+      [22, 73, 45, 3, 74, 46],
+      [8, 53, 23, 26, 54, 24],
+      [12, 45, 15, 28, 46, 16],
+
+      // 28
+      [3, 147, 117, 10, 148, 118],
+      [3, 73, 45, 23, 74, 46],
+      [4, 54, 24, 31, 55, 25],
+      [11, 45, 15, 31, 46, 16],
+
+      // 29
+      [7, 146, 116, 7, 147, 117],
+      [21, 73, 45, 7, 74, 46],
+      [1, 53, 23, 37, 54, 24],
+      [19, 45, 15, 26, 46, 16],
+
+      // 30
+      [5, 145, 115, 10, 146, 116],
+      [19, 75, 47, 10, 76, 48],
+      [15, 54, 24, 25, 55, 25],
+      [23, 45, 15, 25, 46, 16],
+
+      // 31
+      [13, 145, 115, 3, 146, 116],
+      [2, 74, 46, 29, 75, 47],
+      [42, 54, 24, 1, 55, 25],
+      [23, 45, 15, 28, 46, 16],
+
+      // 32
+      [17, 145, 115],
+      [10, 74, 46, 23, 75, 47],
+      [10, 54, 24, 35, 55, 25],
+      [19, 45, 15, 35, 46, 16],
+
+      // 33
+      [17, 145, 115, 1, 146, 116],
+      [14, 74, 46, 21, 75, 47],
+      [29, 54, 24, 19, 55, 25],
+      [11, 45, 15, 46, 46, 16],
+
+      // 34
+      [13, 145, 115, 6, 146, 116],
+      [14, 74, 46, 23, 75, 47],
+      [44, 54, 24, 7, 55, 25],
+      [59, 46, 16, 1, 47, 17],
+
+      // 35
+      [12, 151, 121, 7, 152, 122],
+      [12, 75, 47, 26, 76, 48],
+      [39, 54, 24, 14, 55, 25],
+      [22, 45, 15, 41, 46, 16],
+
+      // 36
+      [6, 151, 121, 14, 152, 122],
+      [6, 75, 47, 34, 76, 48],
+      [46, 54, 24, 10, 55, 25],
+      [2, 45, 15, 64, 46, 16],
+
+      // 37
+      [17, 152, 122, 4, 153, 123],
+      [29, 74, 46, 14, 75, 47],
+      [49, 54, 24, 10, 55, 25],
+      [24, 45, 15, 46, 46, 16],
+
+      // 38
+      [4, 152, 122, 18, 153, 123],
+      [13, 74, 46, 32, 75, 47],
+      [48, 54, 24, 14, 55, 25],
+      [42, 45, 15, 32, 46, 16],
+
+      // 39
+      [20, 147, 117, 4, 148, 118],
+      [40, 75, 47, 7, 76, 48],
+      [43, 54, 24, 22, 55, 25],
+      [10, 45, 15, 67, 46, 16],
+
+      // 40
+      [19, 148, 118, 6, 149, 119],
+      [18, 75, 47, 31, 76, 48],
+      [34, 54, 24, 34, 55, 25],
+      [20, 45, 15, 61, 46, 16]
+    ];
+
+    var qrRSBlock = function(totalCount, dataCount) {
+      var _this = {};
+      _this.totalCount = totalCount;
+      _this.dataCount = dataCount;
+      return _this;
+    };
+
+    var _this = {};
+
+    var getRsBlockTable = function(typeNumber, errorCorrectionLevel) {
+
+      switch(errorCorrectionLevel) {
+      case QRErrorCorrectionLevel.L :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
+      case QRErrorCorrectionLevel.M :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 1];
+      case QRErrorCorrectionLevel.Q :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 2];
+      case QRErrorCorrectionLevel.H :
+        return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 3];
+      default :
+        return undefined;
+      }
+    };
+
+    _this.getRSBlocks = function(typeNumber, errorCorrectionLevel) {
+
+      var rsBlock = getRsBlockTable(typeNumber, errorCorrectionLevel);
+
+      if (typeof rsBlock == 'undefined') {
+        throw 'bad rs block @ typeNumber:' + typeNumber +
+            '/errorCorrectionLevel:' + errorCorrectionLevel;
+      }
+
+      var length = rsBlock.length / 3;
+
+      var list = [];
+
+      for (var i = 0; i < length; i += 1) {
+
+        var count = rsBlock[i * 3 + 0];
+        var totalCount = rsBlock[i * 3 + 1];
+        var dataCount = rsBlock[i * 3 + 2];
+
+        for (var j = 0; j < count; j += 1) {
+          list.push(qrRSBlock(totalCount, dataCount) );
+        }
+      }
+
+      return list;
+    };
+
+    return _this;
+  }();
+
+  //---------------------------------------------------------------------
+  // qrBitBuffer
+  //---------------------------------------------------------------------
+
+  var qrBitBuffer = function() {
+
+    var _buffer = [];
+    var _length = 0;
+
+    var _this = {};
+
+    _this.getBuffer = function() {
+      return _buffer;
+    };
+
+    _this.getAt = function(index) {
+      var bufIndex = Math.floor(index / 8);
+      return ( (_buffer[bufIndex] >>> (7 - index % 8) ) & 1) == 1;
+    };
+
+    _this.put = function(num, length) {
+      for (var i = 0; i < length; i += 1) {
+        _this.putBit( ( (num >>> (length - i - 1) ) & 1) == 1);
+      }
+    };
+
+    _this.getLengthInBits = function() {
+      return _length;
+    };
+
+    _this.putBit = function(bit) {
+
+      var bufIndex = Math.floor(_length / 8);
+      if (_buffer.length <= bufIndex) {
+        _buffer.push(0);
+      }
+
+      if (bit) {
+        _buffer[bufIndex] |= (0x80 >>> (_length % 8) );
+      }
+
+      _length += 1;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrNumber
+  //---------------------------------------------------------------------
+
+  var qrNumber = function(data) {
+
+    var _mode = QRMode.MODE_NUMBER;
+    var _data = data;
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _data.length;
+    };
+
+    _this.write = function(buffer) {
+
+      var data = _data;
+
+      var i = 0;
+
+      while (i + 2 < data.length) {
+        buffer.put(strToNum(data.substring(i, i + 3) ), 10);
+        i += 3;
+      }
+
+      if (i < data.length) {
+        if (data.length - i == 1) {
+          buffer.put(strToNum(data.substring(i, i + 1) ), 4);
+        } else if (data.length - i == 2) {
+          buffer.put(strToNum(data.substring(i, i + 2) ), 7);
+        }
+      }
+    };
+
+    var strToNum = function(s) {
+      var num = 0;
+      for (var i = 0; i < s.length; i += 1) {
+        num = num * 10 + chatToNum(s.charAt(i) );
+      }
+      return num;
+    };
+
+    var chatToNum = function(c) {
+      if ('0' <= c && c <= '9') {
+        return c.charCodeAt(0) - '0'.charCodeAt(0);
+      }
+      throw 'illegal char :' + c;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrAlphaNum
+  //---------------------------------------------------------------------
+
+  var qrAlphaNum = function(data) {
+
+    var _mode = QRMode.MODE_ALPHA_NUM;
+    var _data = data;
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _data.length;
+    };
+
+    _this.write = function(buffer) {
+
+      var s = _data;
+
+      var i = 0;
+
+      while (i + 1 < s.length) {
+        buffer.put(
+          getCode(s.charAt(i) ) * 45 +
+          getCode(s.charAt(i + 1) ), 11);
+        i += 2;
+      }
+
+      if (i < s.length) {
+        buffer.put(getCode(s.charAt(i) ), 6);
+      }
+    };
+
+    var getCode = function(c) {
+
+      if ('0' <= c && c <= '9') {
+        return c.charCodeAt(0) - '0'.charCodeAt(0);
+      } else if ('A' <= c && c <= 'Z') {
+        return c.charCodeAt(0) - 'A'.charCodeAt(0) + 10;
+      } else {
+        switch (c) {
+        case ' ' : return 36;
+        case '$' : return 37;
+        case '%' : return 38;
+        case '*' : return 39;
+        case '+' : return 40;
+        case '-' : return 41;
+        case '.' : return 42;
+        case '/' : return 43;
+        case ':' : return 44;
+        default :
+          throw 'illegal char :' + c;
+        }
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qr8BitByte
+  //---------------------------------------------------------------------
+
+  var qr8BitByte = function(data) {
+
+    var _mode = QRMode.MODE_8BIT_BYTE;
+    var _data = data;
+    var _bytes = qrcode.stringToBytes(data);
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return _bytes.length;
+    };
+
+    _this.write = function(buffer) {
+      for (var i = 0; i < _bytes.length; i += 1) {
+        buffer.put(_bytes[i], 8);
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // qrKanji
+  //---------------------------------------------------------------------
+
+  var qrKanji = function(data) {
+
+    var _mode = QRMode.MODE_KANJI;
+    var _data = data;
+
+    var stringToBytes = qrcode.stringToBytesFuncs['SJIS'];
+    if (!stringToBytes) {
+      throw 'sjis not supported.';
+    }
+    !function(c, code) {
+      // self test for sjis support.
+      var test = stringToBytes(c);
+      if (test.length != 2 || ( (test[0] << 8) | test[1]) != code) {
+        throw 'sjis not supported.';
+      }
+    }('\u53cb', 0x9746);
+
+    var _bytes = stringToBytes(data);
+
+    var _this = {};
+
+    _this.getMode = function() {
+      return _mode;
+    };
+
+    _this.getLength = function(buffer) {
+      return ~~(_bytes.length / 2);
+    };
+
+    _this.write = function(buffer) {
+
+      var data = _bytes;
+
+      var i = 0;
+
+      while (i + 1 < data.length) {
+
+        var c = ( (0xff & data[i]) << 8) | (0xff & data[i + 1]);
+
+        if (0x8140 <= c && c <= 0x9FFC) {
+          c -= 0x8140;
+        } else if (0xE040 <= c && c <= 0xEBBF) {
+          c -= 0xC140;
+        } else {
+          throw 'illegal char at ' + (i + 1) + '/' + c;
+        }
+
+        c = ( (c >>> 8) & 0xff) * 0xC0 + (c & 0xff);
+
+        buffer.put(c, 13);
+
+        i += 2;
+      }
+
+      if (i < data.length) {
+        throw 'illegal char at ' + (i + 1);
+      }
+    };
+
+    return _this;
+  };
+
+  //=====================================================================
+  // GIF Support etc.
+  //
+
+  //---------------------------------------------------------------------
+  // byteArrayOutputStream
+  //---------------------------------------------------------------------
+
+  var byteArrayOutputStream = function() {
+
+    var _bytes = [];
+
+    var _this = {};
+
+    _this.writeByte = function(b) {
+      _bytes.push(b & 0xff);
+    };
+
+    _this.writeShort = function(i) {
+      _this.writeByte(i);
+      _this.writeByte(i >>> 8);
+    };
+
+    _this.writeBytes = function(b, off, len) {
+      off = off || 0;
+      len = len || b.length;
+      for (var i = 0; i < len; i += 1) {
+        _this.writeByte(b[i + off]);
+      }
+    };
+
+    _this.writeString = function(s) {
+      for (var i = 0; i < s.length; i += 1) {
+        _this.writeByte(s.charCodeAt(i) );
+      }
+    };
+
+    _this.toByteArray = function() {
+      return _bytes;
+    };
+
+    _this.toString = function() {
+      var s = '';
+      s += '[';
+      for (var i = 0; i < _bytes.length; i += 1) {
+        if (i > 0) {
+          s += ',';
+        }
+        s += _bytes[i];
+      }
+      s += ']';
+      return s;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // base64EncodeOutputStream
+  //---------------------------------------------------------------------
+
+  var base64EncodeOutputStream = function() {
+
+    var _buffer = 0;
+    var _buflen = 0;
+    var _length = 0;
+    var _base64 = '';
+
+    var _this = {};
+
+    var writeEncoded = function(b) {
+      _base64 += String.fromCharCode(encode(b & 0x3f) );
+    };
+
+    var encode = function(n) {
+      if (n < 0) {
+        // error.
+      } else if (n < 26) {
+        return 0x41 + n;
+      } else if (n < 52) {
+        return 0x61 + (n - 26);
+      } else if (n < 62) {
+        return 0x30 + (n - 52);
+      } else if (n == 62) {
+        return 0x2b;
+      } else if (n == 63) {
+        return 0x2f;
+      }
+      throw 'n:' + n;
+    };
+
+    _this.writeByte = function(n) {
+
+      _buffer = (_buffer << 8) | (n & 0xff);
+      _buflen += 8;
+      _length += 1;
+
+      while (_buflen >= 6) {
+        writeEncoded(_buffer >>> (_buflen - 6) );
+        _buflen -= 6;
+      }
+    };
+
+    _this.flush = function() {
+
+      if (_buflen > 0) {
+        writeEncoded(_buffer << (6 - _buflen) );
+        _buffer = 0;
+        _buflen = 0;
+      }
+
+      if (_length % 3 != 0) {
+        // padding
+        var padlen = 3 - _length % 3;
+        for (var i = 0; i < padlen; i += 1) {
+          _base64 += '=';
+        }
+      }
+    };
+
+    _this.toString = function() {
+      return _base64;
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // base64DecodeInputStream
+  //---------------------------------------------------------------------
+
+  var base64DecodeInputStream = function(str) {
+
+    var _str = str;
+    var _pos = 0;
+    var _buffer = 0;
+    var _buflen = 0;
+
+    var _this = {};
+
+    _this.read = function() {
+
+      while (_buflen < 8) {
+
+        if (_pos >= _str.length) {
+          if (_buflen == 0) {
+            return -1;
+          }
+          throw 'unexpected end of file./' + _buflen;
+        }
+
+        var c = _str.charAt(_pos);
+        _pos += 1;
+
+        if (c == '=') {
+          _buflen = 0;
+          return -1;
+        } else if (c.match(/^\s$/) ) {
+          // ignore if whitespace.
+          continue;
+        }
+
+        _buffer = (_buffer << 6) | decode(c.charCodeAt(0) );
+        _buflen += 6;
+      }
+
+      var n = (_buffer >>> (_buflen - 8) ) & 0xff;
+      _buflen -= 8;
+      return n;
+    };
+
+    var decode = function(c) {
+      if (0x41 <= c && c <= 0x5a) {
+        return c - 0x41;
+      } else if (0x61 <= c && c <= 0x7a) {
+        return c - 0x61 + 26;
+      } else if (0x30 <= c && c <= 0x39) {
+        return c - 0x30 + 52;
+      } else if (c == 0x2b) {
+        return 62;
+      } else if (c == 0x2f) {
+        return 63;
+      } else {
+        throw 'c:' + c;
+      }
+    };
+
+    return _this;
+  };
+
+  //---------------------------------------------------------------------
+  // gifImage (B/W)
+  //---------------------------------------------------------------------
+
+  var gifImage = function(width, height) {
+
+    var _width = width;
+    var _height = height;
+    var _data = new Array(width * height);
+
+    var _this = {};
+
+    _this.setPixel = function(x, y, pixel) {
+      _data[y * _width + x] = pixel;
+    };
+
+    _this.write = function(out) {
+
+      //---------------------------------
+      // GIF Signature
+
+      out.writeString('GIF87a');
+
+      //---------------------------------
+      // Screen Descriptor
+
+      out.writeShort(_width);
+      out.writeShort(_height);
+
+      out.writeByte(0x80); // 2bit
+      out.writeByte(0);
+      out.writeByte(0);
+
+      //---------------------------------
+      // Global Color Map
+
+      // black
+      out.writeByte(0x00);
+      out.writeByte(0x00);
+      out.writeByte(0x00);
+
+      // white
+      out.writeByte(0xff);
+      out.writeByte(0xff);
+      out.writeByte(0xff);
+
+      //---------------------------------
+      // Image Descriptor
+
+      out.writeString(',');
+      out.writeShort(0);
+      out.writeShort(0);
+      out.writeShort(_width);
+      out.writeShort(_height);
+      out.writeByte(0);
+
+      //---------------------------------
+      // Local Color Map
+
+      //---------------------------------
+      // Raster Data
+
+      var lzwMinCodeSize = 2;
+      var raster = getLZWRaster(lzwMinCodeSize);
+
+      out.writeByte(lzwMinCodeSize);
+
+      var offset = 0;
+
+      while (raster.length - offset > 255) {
+        out.writeByte(255);
+        out.writeBytes(raster, offset, 255);
+        offset += 255;
+      }
+
+      out.writeByte(raster.length - offset);
+      out.writeBytes(raster, offset, raster.length - offset);
+      out.writeByte(0x00);
+
+      //---------------------------------
+      // GIF Terminator
+      out.writeString(';');
+    };
+
+    var bitOutputStream = function(out) {
+
+      var _out = out;
+      var _bitLength = 0;
+      var _bitBuffer = 0;
+
+      var _this = {};
+
+      _this.write = function(data, length) {
+
+        if ( (data >>> length) != 0) {
+          throw 'length over';
+        }
+
+        while (_bitLength + length >= 8) {
+          _out.writeByte(0xff & ( (data << _bitLength) | _bitBuffer) );
+          length -= (8 - _bitLength);
+          data >>>= (8 - _bitLength);
+          _bitBuffer = 0;
+          _bitLength = 0;
+        }
+
+        _bitBuffer = (data << _bitLength) | _bitBuffer;
+        _bitLength = _bitLength + length;
+      };
+
+      _this.flush = function() {
+        if (_bitLength > 0) {
+          _out.writeByte(_bitBuffer);
+        }
+      };
+
+      return _this;
+    };
+
+    var getLZWRaster = function(lzwMinCodeSize) {
+
+      var clearCode = 1 << lzwMinCodeSize;
+      var endCode = (1 << lzwMinCodeSize) + 1;
+      var bitLength = lzwMinCodeSize + 1;
+
+      // Setup LZWTable
+      var table = lzwTable();
+
+      for (var i = 0; i < clearCode; i += 1) {
+        table.add(String.fromCharCode(i) );
+      }
+      table.add(String.fromCharCode(clearCode) );
+      table.add(String.fromCharCode(endCode) );
+
+      var byteOut = byteArrayOutputStream();
+      var bitOut = bitOutputStream(byteOut);
+
+      // clear code
+      bitOut.write(clearCode, bitLength);
+
+      var dataIndex = 0;
+
+      var s = String.fromCharCode(_data[dataIndex]);
+      dataIndex += 1;
+
+      while (dataIndex < _data.length) {
+
+        var c = String.fromCharCode(_data[dataIndex]);
+        dataIndex += 1;
+
+        if (table.contains(s + c) ) {
+
+          s = s + c;
+
+        } else {
+
+          bitOut.write(table.indexOf(s), bitLength);
+
+          if (table.size() < 0xfff) {
+
+            if (table.size() == (1 << bitLength) ) {
+              bitLength += 1;
+            }
+
+            table.add(s + c);
+          }
+
+          s = c;
+        }
+      }
+
+      bitOut.write(table.indexOf(s), bitLength);
+
+      // end code
+      bitOut.write(endCode, bitLength);
+
+      bitOut.flush();
+
+      return byteOut.toByteArray();
+    };
+
+    var lzwTable = function() {
+
+      var _map = {};
+      var _size = 0;
+
+      var _this = {};
+
+      _this.add = function(key) {
+        if (_this.contains(key) ) {
+          throw 'dup key:' + key;
+        }
+        _map[key] = _size;
+        _size += 1;
+      };
+
+      _this.size = function() {
+        return _size;
+      };
+
+      _this.indexOf = function(key) {
+        return _map[key];
+      };
+
+      _this.contains = function(key) {
+        return typeof _map[key] != 'undefined';
+      };
+
+      return _this;
+    };
+
+    return _this;
+  };
+
+  var createDataURL = function(width, height, getPixel) {
+    var gif = gifImage(width, height);
+    for (var y = 0; y < height; y += 1) {
+      for (var x = 0; x < width; x += 1) {
+        gif.setPixel(x, y, getPixel(x, y) );
+      }
+    }
+
+    var b = byteArrayOutputStream();
+    gif.write(b);
+
+    var base64 = base64EncodeOutputStream();
+    var bytes = b.toByteArray();
+    for (var i = 0; i < bytes.length; i += 1) {
+      base64.writeByte(bytes[i]);
+    }
+    base64.flush();
+
+    return 'data:image/gif;base64,' + base64;
+  };
+
+  //---------------------------------------------------------------------
+  // returns qrcode function.
+
+  return qrcode;
+}();
+
+// multibyte support
+!function() {
+
+  qrcode.stringToBytesFuncs['UTF-8'] = function(s) {
+    // http://stackoverflow.com/questions/18729405/how-to-convert-utf8-string-to-byte-array
+    function toUTF8Array(str) {
+      var utf8 = [];
+      for (var i=0; i < str.length; i++) {
+        var charcode = str.charCodeAt(i);
+        if (charcode < 0x80) utf8.push(charcode);
+        else if (charcode < 0x800) {
+          utf8.push(0xc0 | (charcode >> 6),
+              0x80 | (charcode & 0x3f));
+        }
+        else if (charcode < 0xd800 || charcode >= 0xe000) {
+          utf8.push(0xe0 | (charcode >> 12),
+              0x80 | ((charcode>>6) & 0x3f),
+              0x80 | (charcode & 0x3f));
+        }
+        // surrogate pair
+        else {
+          i++;
+          // UTF-16 encodes 0x10000-0x10FFFF by
+          // subtracting 0x10000 and splitting the
+          // 20 bits of 0x0-0xFFFFF into two halves
+          charcode = 0x10000 + (((charcode & 0x3ff)<<10)
+            | (str.charCodeAt(i) & 0x3ff));
+          utf8.push(0xf0 | (charcode >>18),
+              0x80 | ((charcode>>12) & 0x3f),
+              0x80 | ((charcode>>6) & 0x3f),
+              0x80 | (charcode & 0x3f));
+        }
+      }
+      return utf8;
+    }
+    return toUTF8Array(s);
+  };
+
+}();
+
+(function (factory) {
+  if (typeof define === 'function' && define.amd) {
+      define([], factory);
+  } else if (typeof exports === 'object') {
+      module.exports = factory();
+  }
+}(function () {
+    return qrcode;
+}));
+
+</script>
 
 <script>
+/* =========================================================================
+   Live Feed Quantizer — client architecture
+   FrameSource: LocalCamera | RemoteDevice (WebRTC) | BridgeFeed (WS JPEG)
+   AudioSource: local mic | remote track | silent
+   The browser owns the palette and all five WebGL modes for every source.
+   ========================================================================= */
 const $ = s => document.querySelector(s);
 const cv = $('#cv'), vid = $('#vid'), body = document.body;
 const MODES = ['Palette', 'Dither', 'Halftone', 'Gradient', 'Ripple'];
 const PRESETS = Array.from({ length: 5 }, () => ({ pix: 10, sens: 1, resp: 0.12 }));
 let S = PRESETS[0];
-let mode = 0, mirror = 1, ov = false, run = false, stream = null, starting = false;
-const selected = { video: '', audio: '' };   // chosen deviceIds ('' = browser default)
-let micMuted = false, hasMic = false;
+let mode = 0, mirror = 1, ov = false, run = false;
+const selected = { video: '', audio: '' };
+let micMuted = false;
 
-/* ---------- start / stop ---------- */
-function status(msg, err) { $('#st').textContent = msg; body.classList.toggle('err', !!err); }
-async function start() {
-  if (run || starting) return;
-  starting = true;
-  const v = { width: { ideal: 1280 }, height: { ideal: 720 } };
-  if (selected.video) v.deviceId = { exact: selected.video };
-  // AGC / noise suppression off: keeps the real dynamics the palette reacts to.
-  const a = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
-  if (selected.audio) a.deviceId = { exact: selected.audio };
-  try {
-    let s, noMic = false;
+/* ---------- backend resolver (single source of truth) ---------- */
+const BACKEND_PORT = 8001;
+const BRIDGE_PORTS = [8765, 8766, 8767];
+function resolveBackend() {
+  const qp = new URLSearchParams(location.search);
+  const override = qp.get('backend');
+  if (override) {
+    const value = /^https?:\/\//i.test(override) ? override : `http://${override}`;
+    return value.replace(/\/$/, '');
+  }
+  if (location.protocol === 'https:') return location.origin;
+  if (location.port === '5500') return `http://${location.hostname}:${BACKEND_PORT}`;
+  return location.origin;
+}
+function wsURL(path) {
+  const base = resolveBackend();
+  const url = new URL(path, base);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  return url.toString();
+}
+function bridgeURL(port, path = '') {
+  return `http://127.0.0.1:${port}${path}`;
+}
+const BACKEND = resolveBackend();
+
+/* ---------- persistence: schema v2 + legacy migration ---------- */
+const LS_V2 = 'lfq_sources_v2';
+const LS_LEGACY = 'savedCams';
+let store = { v: 2, sources: [], activeId: null, activeAudioDeviceId: null };
+function uid() {
+  return (crypto && crypto.randomUUID) ? crypto.randomUUID() : 's_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+function normalizeSource(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const kind = raw.kind || (raw.source === 'local' ? 'local' : 'network');
+  if (kind === 'local') {
+    return { id: raw.id || uid(), kind: 'local', name: raw.name || 'Local camera', deviceId: raw.deviceId || '', audioDeviceId: raw.audioDeviceId || '' };
+  }
+  if (kind === 'remote') {
+    return { id: raw.id || uid(), kind: 'remote', name: raw.name || 'Remote device', roomCode: raw.roomCode || '', peerId: raw.peerId || '' };
+  }
+  return {
+    id: raw.id || uid(), kind: 'network', name: raw.name || 'Network camera',
+    protocol: raw.protocol || 'rtsp', url: raw.url || '',
+    rememberCredential: !!raw.rememberCredential
+  };
+}
+function loadStore() {
+  let loaded = null;
+  try { loaded = JSON.parse(localStorage.getItem(LS_V2) || 'null'); } catch (e) {}
+  if (loaded && loaded.v === 2 && Array.isArray(loaded.sources)) {
+    store = {
+      v: 2,
+      sources: loaded.sources.map(normalizeSource).filter(Boolean),
+      activeId: loaded.activeId || null,
+      activeAudioDeviceId: loaded.activeAudioDeviceId || null
+    };
+    return;
+  }
+  // Migrate the legacy savedCams array once.
+  let legacy = [];
+  try { legacy = JSON.parse(localStorage.getItem(LS_LEGACY) || '[]'); } catch (e) {}
+  if (Array.isArray(legacy) && legacy.length) {
+    store.sources = legacy.map(cam => normalizeSource({
+      id: cam.id, kind: 'network', name: cam.name || 'Saved camera',
+      protocol: cam.source === 'ip' ? 'ip' : (cam.protocol || cam.source || 'rtsp'),
+      url: cam.url || ''
+    })).filter(Boolean);
+    store.activeId = legacy.find(c => c.id === store.activeId) ? store.activeId : null;
+    saveStore();
+  }
+}
+let saveTimer = 0;
+function saveStore() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(LS_V2, JSON.stringify(store)); } catch (e) {}
+  }, 120);
+}
+function activeSource() {
+  return store.sources.find(s => s.id === store.activeId) || null;
+}
+function upsertSource(src) {
+  const existing = store.sources.findIndex(s => s.id === src.id);
+  if (existing >= 0) store.sources[existing] = { ...store.sources[existing], ...src };
+  else store.sources.push(src);
+  saveStore();
+  return src;
+}
+function removeSource(id) {
+  store.sources = store.sources.filter(s => s.id !== id);
+  if (store.activeId === id) store.activeId = null;
+  saveStore();
+  renderSources();
+}
+
+/* ---------- source state machine ---------- */
+class StateMachine {
+  constructor() { this.state = 'idle'; this.detail = ''; this.listeners = new Set(); }
+  set(state, detail = '') {
+    if (this.state === state && this.detail === detail) return;
+    this.state = state; this.detail = detail;
+    this.listeners.forEach(fn => { try { fn(state, detail); } catch (e) { console.error(e); } });
+  }
+  on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
+}
+function backoffDelay(attempt) { return Math.min(5000, 500 * Math.pow(2, Math.min(attempt, 4))); }
+
+class FrameSource {
+  constructor(id) {
+    this.id = id;
+    this.sm = new StateMachine();
+    this.running = false;
+    this._attempt = 0;
+    this._timer = null;
+  }
+  async start() {
+    if (this.running) return;
+    this.running = true;
+    this._attempt = 0;
+    await this._connect();
+  }
+  stop() {
+    this.running = false;
+    clearTimeout(this._timer);
+    this._timer = null;
+    this._disconnect();
+    this.sm.set('idle');
+  }
+  _scheduleReconnect(err) {
+    if (!this.running) return;
+    const delay = backoffDelay(this._attempt++);
+    this.sm.set('reconnecting', `${err || 'connection lost'} · retry ${(delay / 1000).toFixed(1)}s`);
+    clearTimeout(this._timer);
+    this._timer = setTimeout(() => { if (this.running) this._connect(); }, delay);
+  }
+  _connect() {}
+  _disconnect() {}
+  frame() { return null; }
+  size() { return [0, 0]; }
+  releaseFrame() {}
+  label() { return 'Source'; }
+}
+
+class LocalCameraSource extends FrameSource {
+  constructor(id, deviceId) {
+    super(id);
+    this.deviceId = deviceId || '';
+    this.stream = null;
+    this.video = vid;
+  }
+  async _connect() {
+    this.sm.set('connecting');
     try {
-      s = await navigator.mediaDevices.getUserMedia({ video: v, audio: a });
-    } catch (e) {
-      try {
-        s = await navigator.mediaDevices.getUserMedia({ video: v, audio: true });
-      } catch (e2) {
-        try {
-          s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        } catch (e3) {
-          s = await navigator.mediaDevices.getUserMedia({ video: true }); noMic = true;
-        }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access needs https or localhost');
       }
+      const video = { width: { ideal: 1280 }, height: { ideal: 720 } };
+      if (this.deviceId) video.deviceId = { exact: this.deviceId };
+      const stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+      this.stream = stream;
+      const track = stream.getVideoTracks()[0];
+      if (track) {
+        const settings = track.getSettings ? track.getSettings() : {};
+        if (settings.deviceId) { this.deviceId = settings.deviceId; selected.video = settings.deviceId; }
+        track.addEventListener('ended', () => {
+          if (!this.running) return;
+          this._disconnect();
+          this._scheduleReconnect('camera disconnected');
+        });
+      }
+      this.video.srcObject = stream;
+      this.video.muted = true;
+      await this.video.play().catch(() => {});
+      this._attempt = 0;
+      this.sm.set('live');
+      refreshDevices();
+    } catch (err) {
+      this.sm.set('error', errorText(err));
+      const fatal = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+      if (!fatal) this._scheduleReconnect(errorText(err));
     }
-    stream = s; vid.srcObject = s;
-    hasMic = s.getAudioTracks().length > 0;
-    const vt = s.getVideoTracks()[0], at = s.getAudioTracks()[0];
-    if (vt) { const id = (vt.getSettings() || {}).deviceId; if (id) selected.video = id; }
-    if (at) { const id = (at.getSettings() || {}).deviceId; if (id) selected.audio = id; }
-    refreshDevices();
-    // play() can reject when a previous source was just replaced; the frames still arrive.
-    vid.play().catch(() => {});
-    if (s.getAudioTracks().length) {
-      ac = new (window.AudioContext || window.webkitAudioContext)(); await ac.resume();
-      an = ac.createAnalyser(); an.fftSize = 2048; an.smoothingTimeConstant = .4;
-      ac.createMediaStreamSource(s).connect(an);
-      fd = new Uint8Array(an.frequencyBinCount); sr = ac.sampleRate;
-    }
-    run = true; body.classList.add('on'); wake();
-    status(noMic ? 'Live · no mic, palette drifts' : 'Live');
-  } catch (e) {
-    if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; vid.srcObject = null;
-    if (ac) { ac.close(); ac = an = null; }
-    status('Camera error: ' + e.message, true);
-  } finally { starting = false; }
-}
-function stop() {
-  run = false; starting = false; body.classList.remove('on', 'idle');
-  if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; vid.srcObject = null;
-  if (ac) { ac.close(); ac = an = null; } $('#fps').textContent = ''; status('Stopped');
-  micMuted = false; hasMic = false;
-  const mb = $('#micBtn'); if (mb) mb.classList.remove('off');
+  }
+  _disconnect() {
+    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    this.stream = null;
+    if (this.video.srcObject) this.video.srcObject = null;
+  }
+  frame() {
+    return (this.video.readyState >= 2 && this.video.videoWidth) ? this.video : null;
+  }
+  size() { return [this.video.videoWidth || 0, this.video.videoHeight || 0]; }
+  label() { return 'Local camera'; }
 }
 
-$('#go').onclick = () => run ? stop() : start();
+class AudioSource {
+  constructor(id) { this.id = id; this.sm = new StateMachine(); this.analyser = null; }
+  async start() {}
+  stop() {}
+  get isLive() { return this.sm.state === 'live'; }
+}
 
-/* ---------- WebGL: all quantizing happens on the GPU, no server round-trip ---------- */
+class LocalMicSource extends AudioSource {
+  constructor(id, deviceId, opts = {}) {
+    super(id);
+    this.deviceId = deviceId || '';
+    this.opts = opts;
+    this.stream = null;
+    this.ctx = null;
+  }
+  async start() {
+    this.sm.set('connecting');
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Microphone access needs https or localhost');
+      const audio = {
+        echoCancellation: !!this.opts.echoCancellation,
+        noiseSuppression: !!this.opts.noiseSuppression,
+        autoGainControl: !!this.opts.autoGainControl
+      };
+      if (this.opts.sampleRate) audio.sampleRate = { ideal: +this.opts.sampleRate };
+      if (this.deviceId) audio.deviceId = { exact: this.deviceId };
+      const stream = await navigator.mediaDevices.getUserMedia({ audio, video: false });
+      this.stream = stream;
+      const track = stream.getAudioTracks()[0];
+      if (track) {
+        const settings = track.getSettings ? track.getSettings() : {};
+        if (settings.deviceId) { this.deviceId = settings.deviceId; selected.audio = settings.deviceId; }
+      }
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)(this.opts.sampleRate ? { sampleRate: +this.opts.sampleRate } : undefined);
+      await this.ctx.resume().catch(() => {});
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 2048;
+      this.analyser.smoothingTimeConstant = 0.4;
+      this.ctx.createMediaStreamSource(stream).connect(this.analyser);
+      sr = this.ctx.sampleRate;
+      fd = new Uint8Array(this.analyser.frequencyBinCount);
+      this.sm.set('live');
+      refreshDevices();
+    } catch (err) {
+      this.analyser = null;
+      this.sm.set('error', errorText(err));
+    }
+  }
+  stop() {
+    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    this.stream = null;
+    if (this.ctx) { this.ctx.close().catch(() => {}); this.ctx = null; }
+    this.analyser = null;
+    this.sm.set('idle');
+  }
+}
+
+class SilentAudioSource extends AudioSource {
+  async start() { this.sm.set('live', 'no microphone'); }
+}
+
+function errorText(err) {
+  if (!err) return 'Unknown error';
+  if (err.name === 'NotAllowedError') return 'Permission denied';
+  if (err.name === 'NotFoundError') return 'Device not found';
+  if (err.name === 'NotReadableError') return 'Device busy';
+  return err.message || err.name || String(err);
+}
+
+/* ---------- Tier 0: remote devices over WebRTC ---------- */
+class RemoteDeviceSource extends FrameSource {
+  constructor(id, peerId, stream, label) {
+    super(id);
+    this.peerId = peerId;
+    this.stream = stream;
+    this.video = document.createElement('video');
+    this.video.playsInline = true;
+    this.video.muted = true;
+    this.video.srcObject = stream;
+    this.video.style.cssText = 'position:fixed;width:2px;height:2px;opacity:0;pointer-events:none';
+    document.body.appendChild(this.video);
+    this.video.play().catch(() => {});
+    this._label = label || 'Remote device';
+    this.sm.set('live');
+  }
+  frame() { return (this.video.readyState >= 2 && this.video.videoWidth) ? this.video : null; }
+  size() { return [this.video.videoWidth || 0, this.video.videoHeight || 0]; }
+  label() { return this._label; }
+  _disconnect() {
+    this.video.pause();
+    this.video.srcObject = null;
+    if (this.video.parentNode) this.video.parentNode.removeChild(this.video);
+  }
+  stop() { super.stop(); }
+}
+
+class RemoteAudioSource extends AudioSource {
+  constructor(id, stream) {
+    super(id);
+    this.stream = stream;
+    this.ctx = null;
+  }
+  async start() {
+    this.sm.set('connecting');
+    try {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      await this.ctx.resume().catch(() => {});
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 2048;
+      this.analyser.smoothingTimeConstant = 0.4;
+      this.ctx.createMediaStreamSource(this.stream).connect(this.analyser);
+      sr = this.ctx.sampleRate;
+      fd = new Uint8Array(this.analyser.frequencyBinCount);
+      this.sm.set('live');
+    } catch (err) {
+      this.analyser = null;
+      this.sm.set('error', errorText(err));
+    }
+  }
+  stop() {
+    // Do not stop the remote tracks: the video source may still be using them.
+    if (this.ctx) { this.ctx.close().catch(() => {}); this.ctx = null; }
+    this.analyser = null;
+    this.sm.set('idle');
+  }
+}
+
+const remote = {
+  room: null, hostToken: null, joinUrl: '', ws: null, iceServers: [],
+  devices: new Map(),        // peerId -> {peerId, label, stream, state}
+  pcs: new Map(),            // peerId -> RTCPeerConnection
+  iceQueues: new Map(),      // peerId -> RTCIceCandidate[]
+  revision: 0
+};
+let remoteReconnectTimer = 0;
+function remoteChanged() {
+  remote.revision++;
+  if (sourceTab === 'remote') renderRemoteTab();
+  renderSavedTabIfVisible();
+}
+function renderSavedTabIfVisible() { if (sourceTab === 'saved') renderSavedTab(); }
+async function signalRequest(path, options = {}) {
+  const resp = await fetch(`${resolveBackend()}${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+  return data;
+}
+function remoteWSURL(role, token) {
+  return wsURL(`/signal/ws?room=${encodeURIComponent(remote.room.id)}&role=${role}&token=${encodeURIComponent(token)}`);
+}
+function sendSignal(message) {
+  if (remote.ws && remote.ws.readyState === WebSocket.OPEN) {
+    remote.ws.send(JSON.stringify(message));
+    return true;
+  }
+  return false;
+}
+async function createRemoteRoom() {
+  if (remote.room && remote.ws) { status('Room already open'); return; }
+  try {
+    const data = await signalRequest('/signal/rooms', { method: 'POST' });
+    remote.room = data.room;
+    remote.hostToken = data.hostToken;
+    remote.iceServers = data.iceServers || [];
+    remote.joinUrl = new URL(data.joinPath || `/?join=${data.room.code}`, location.origin).href;
+    openHostSocket();
+    remoteChanged();
+    status('Remote room ready');
+  } catch (err) {
+    status('Could not create room: ' + err.message, true);
+  }
+}
+function openHostSocket() {
+  if (!remote.room || !remote.hostToken) return;
+  try {
+    const ws = new WebSocket(remoteWSURL('host', remote.hostToken));
+    remote.ws = ws;
+    ws.onmessage = event => {
+      let msg; try { msg = JSON.parse(event.data); } catch (e) { return; }
+      handleHostSignal(msg);
+    };
+    ws.onclose = () => {
+      if (!remote.room) return;
+      // The server keeps the room during the grace period; a host reconnect
+      // uses the same host token.
+      clearTimeout(remoteReconnectTimer);
+      remoteReconnectTimer = setTimeout(() => { if (remote.room) openHostSocket(); }, 1000);
+      remoteChanged();
+    };
+    ws.onopen = () => remoteChanged();
+  } catch (err) {
+    status('Signaling connection failed: ' + err.message, true);
+  }
+}
+async function handleHostSignal(msg) {
+  if (!msg || !msg.type) return;
+  if (msg.type === 'ready') { remoteChanged(); return; }
+  if (msg.type === 'peer_joined') {
+    if (!remote.devices.has(msg.peerId)) {
+      remote.devices.set(msg.peerId, { peerId: msg.peerId, label: 'Remote ' + msg.peerId.slice(-4), stream: null, state: 'connecting' });
+    }
+    remoteChanged();
+    return;
+  }
+  if (msg.type === 'offer') {
+    await acceptRemoteOffer(msg.from, msg.payload);
+    return;
+  }
+  if (msg.type === 'ice') {
+    await addRemoteIce(msg.from, msg.payload);
+    return;
+  }
+  if (msg.type === 'peer_left') {
+    dropRemotePeer(msg.peerId, 'left');
+    return;
+  }
+  if (msg.type === 'error') {
+    status('Signaling: ' + (msg.detail || 'error'), true);
+  }
+}
+async function acceptRemoteOffer(peerId, payload) {
+  try {
+    const pc = new RTCPeerConnection({ iceServers: remote.iceServers });
+    remote.pcs.set(peerId, pc);
+    if (!remote.devices.has(peerId)) {
+      remote.devices.set(peerId, { peerId, label: 'Remote ' + peerId.slice(-4), stream: null, state: 'connecting' });
+    }
+    const entry = remote.devices.get(peerId);
+    pc.onicecandidate = event => {
+      if (event.candidate) sendSignal({ type: 'ice', to: peerId, payload: event.candidate.toJSON() });
+    };
+    pc.ontrack = event => {
+      const stream = (event.streams && event.streams[0]) || new MediaStream([event.track]);
+      entry.stream = stream;
+      entry.state = 'live';
+      remoteChanged();
+    };
+    pc.onconnectionstatechange = () => {
+      entry.state = pc.connectionState;
+      if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+        entry.state = pc.connectionState;
+      }
+      remoteChanged();
+    };
+    await pc.setRemoteDescription(payload);
+    const queued = remote.iceQueues.get(peerId) || [];
+    remote.iceQueues.delete(peerId);
+    for (const candidate of queued) await pc.addIceCandidate(candidate).catch(() => {});
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    sendSignal({ type: 'answer', to: peerId, payload: { type: answer.type, sdp: answer.sdp } });
+  } catch (err) {
+    status('Remote offer failed: ' + err.message, true);
+  }
+}
+async function addRemoteIce(peerId, payload) {
+  if (!payload) return;
+  const pc = remote.pcs.get(peerId);
+  if (!pc || !pc.remoteDescription) {
+    const queue = remote.iceQueues.get(peerId) || [];
+    queue.push(payload);
+    remote.iceQueues.set(peerId, queue);
+    return;
+  }
+  await pc.addIceCandidate(payload).catch(() => {});
+}
+function dropRemotePeer(peerId, reason) {
+  const pc = remote.pcs.get(peerId);
+  if (pc) { try { pc.close(); } catch (e) {} }
+  remote.pcs.delete(peerId);
+  remote.iceQueues.delete(peerId);
+  const entry = remote.devices.get(peerId);
+  if (entry) {
+    const src = store.sources.find(s => s.kind === 'remote' && s.peerId === peerId);
+    if (src && src.id === store.activeId && videoSource instanceof RemoteDeviceSource) {
+      videoSource.stop(); videoSource = null;
+      if (run) status('Remote device ' + reason, true);
+    }
+    if (remoteAudioPeerId === peerId && audioSource instanceof RemoteAudioSource) {
+      // RemoteAudioSource.stop() closes its AudioContext. Without this the
+      // analyser would keep running against ended tracks after the peer left.
+      audioSource.stop();
+      audioSource = null;
+      remoteAudioPeerId = null;
+      if (run) status('Remote audio ' + reason, true);
+    }
+    remote.devices.delete(peerId);
+  }
+  remoteChanged();
+}
+function leaveRemoteRoom() {
+  clearTimeout(remoteReconnectTimer);
+  for (const peerId of [...remote.pcs.keys()]) dropRemotePeer(peerId, 'closed');
+  if (remote.ws) { try { remote.ws.close(); } catch (e) {} }
+  remote.room = null; remote.hostToken = null; remote.joinUrl = ''; remote.ws = null;
+  remote.devices.clear();
+  remoteChanged();
+}
+function remoteSourceFor(src) {
+  const entry = src && remote.devices.get(src.peerId);
+  return entry && entry.stream ? entry : null;
+}
+function connectRemoteVideo(src) {
+  const entry = remoteSourceFor(src);
+  if (!entry) { status('Remote device is not connected', true); return; }
+  if (videoSource) { videoSource.stop(); videoSource = null; }
+  const source = new RemoteDeviceSource(src.id, src.peerId, entry.stream, src.name || entry.label);
+  watchSource(source);
+  videoSource = source;
+  store.activeId = src.id;
+  saveStore();
+}
+let remoteAudioPeerId = null;
+function connectRemoteAudio(peerId) {
+  const entry = remote.devices.get(peerId);
+  if (!entry || !entry.stream || !entry.stream.getAudioTracks().length) {
+    status('That remote device did not share a microphone', true);
+    return;
+  }
+  if (audioSource) { audioSource.stop(); audioSource = null; }
+  remoteAudioPeerId = peerId;
+  const source = new RemoteAudioSource('remote-audio-' + peerId, entry.stream);
+  watchSource(source);
+  audioSource = source;
+  source.start();
+  syncSourceState();
+}
+
+/* ---------- guest side: this browser shares its camera with a room ---------- */
+const guest = { ws: null, pc: null, stream: null, code: '', ice: [], pendingIce: [], active: false };
+function setJoinNote(text) { const el = $('#joinNote'); if (el) el.textContent = text; }
+async function joinAsGuest(code) {
+  if (guest.active) return;
+  guest.code = code;
+  const bar = $('#joinBar'); if (bar) bar.hidden = false;
+  setJoinNote('Requesting camera and microphone…');
+  try {
+    const data = await signalRequest(`/signal/rooms/${encodeURIComponent(code)}/join`, { method: 'POST' });
+    guest.iceServers = data.iceServers || [];
+    guest.roomId = data.room.id;
+    guest.peerId = data.peerId;
+    guest.token = data.peerToken;
+    guest.stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: true
+    });
+    guest.active = true;
+    const ws = new WebSocket(wsURL(`/signal/ws?room=${encodeURIComponent(guest.roomId)}&role=guest&token=${encodeURIComponent(guest.token)}`));
+    guest.ws = ws;
+    ws.onmessage = event => { let msg; try { msg = JSON.parse(event.data); } catch (e) { return; } handleGuestSignal(msg); };
+    ws.onclose = () => { if (guest.active) setJoinNote('Signaling disconnected. Reload or press Share again.'); };
+    setJoinNote('Joining room ' + code + '…');
+  } catch (err) {
+    setJoinNote('Could not join: ' + err.message);
+    status('Remote join failed: ' + err.message, true);
+    leaveGuest();
+  }
+}
+async function handleGuestSignal(msg) {
+  if (!msg || !msg.type) return;
+  if (msg.type === 'ready') {
+    setJoinNote('Connected. Sending camera…');
+    await createGuestOffer();
+    return;
+  }
+  if (msg.type === 'answer') {
+    if (guest.pc) await guest.pc.setRemoteDescription(msg.payload).catch(() => {});
+    for (const candidate of guest.pendingIce) await guest.pc.addIceCandidate(candidate).catch(() => {});
+    guest.pendingIce = [];
+    setJoinNote('Sharing camera and microphone.');
+    return;
+  }
+  if (msg.type === 'ice') {
+    const candidate = msg.payload;
+    if (guest.pc && guest.pc.remoteDescription) await guest.pc.addIceCandidate(candidate).catch(() => {});
+    else guest.pendingIce.push(candidate);
+    return;
+  }
+  if (msg.type === 'bye') { setJoinNote('The host closed the room.'); leaveGuest(); }
+  if (msg.type === 'error') setJoinNote('Signaling: ' + (msg.detail || 'error'));
+}
+async function createGuestOffer() {
+  try {
+    const pc = new RTCPeerConnection({ iceServers: guest.iceServers });
+    guest.pc = pc;
+    guest.stream.getTracks().forEach(track => pc.addTrack(track, guest.stream));
+    pc.onicecandidate = event => {
+      if (event.candidate && guest.ws && guest.ws.readyState === WebSocket.OPEN) {
+        guest.ws.send(JSON.stringify({ type: 'ice', payload: event.candidate.toJSON() }));
+      }
+    };
+    pc.onconnectionstatechange = () => { setJoinNote('WebRTC: ' + pc.connectionState); };
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    guest.ws.send(JSON.stringify({ type: 'offer', payload: { type: offer.type, sdp: offer.sdp } }));
+  } catch (err) {
+    setJoinNote('WebRTC offer failed: ' + err.message);
+  }
+}
+function leaveGuest() {
+  guest.active = false;
+  if (guest.ws) {
+    if (guest.ws.readyState === WebSocket.OPEN) guest.ws.send(JSON.stringify({ type: 'bye' }));
+    try { guest.ws.close(); } catch (e) {}
+  }
+  if (guest.pc) { try { guest.pc.close(); } catch (e) {} }
+  if (guest.stream) guest.stream.getTracks().forEach(t => t.stop());
+  guest.ws = null; guest.pc = null; guest.stream = null; guest.pendingIce = [];
+  const bar = $('#joinBar'); if (bar) bar.hidden = true;
+}
+
+/* ---------- WebGL: all quantizing happens on the GPU ---------- */
 let gl = null;
 try {
   const opts = { antialias: false, alpha: false, powerPreference: 'high-performance' };
-  // The shaders below are GLSL ES 1.00, so prefer a WebGL1 context.
   gl = cv.getContext('webgl', opts) || cv.getContext('webgl2', opts) || cv.getContext('experimental-webgl', opts);
-} catch (e) {
-  // WebGL unavailable - handled below
-}
+} catch (e) {}
 if (!gl) {
   document.querySelector('#go').disabled = true;
   alert('WebGL unavailable. Enable hardware acceleration in your browser settings (chrome://settings/system).');
   throw new Error('No WebGL');
 }
 
-// Initialize WebGL shaders and buffers with error handling
 let prog;
 try {
   const VS = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
@@ -247,23 +3149,13 @@ void main(){
 }`;
   prog = gl.createProgram();
   const vs = gl.createShader(gl.VERTEX_SHADER);
-  gl.shaderSource(vs, VS);
-  gl.compileShader(vs);
-  if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
-    throw new Error('Vertex shader compile error: ' + gl.getShaderInfoLog(vs));
-  }
+  gl.shaderSource(vs, VS); gl.compileShader(vs);
+  if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) throw new Error('Vertex shader compile error: ' + gl.getShaderInfoLog(vs));
   const fs = gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(fs, FS);
-  gl.compileShader(fs);
-  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
-    throw new Error('Fragment shader compile error: ' + gl.getShaderInfoLog(fs));
-  }
-  gl.attachShader(prog, vs);
-  gl.attachShader(prog, fs);
-  gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-    throw new Error('Program link error: ' + gl.getProgramInfoLog(prog));
-  }
+  gl.shaderSource(fs, FS); gl.compileShader(fs);
+  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) throw new Error('Fragment shader compile error: ' + gl.getShaderInfoLog(fs));
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error('Program link error: ' + gl.getProgramInfoLog(prog));
   gl.useProgram(prog);
 } catch (e) {
   console.error('[WEBGL] Initialization error:', e);
@@ -272,7 +3164,6 @@ void main(){
   throw e;
 }
 
-/* ---------- WebGL uniforms and setup ---------- */
 const U = {};
 ['uT', 'uR', 'uCov', 'uN', 'uM', 'uPix', 'uTime', 'uBass', 'uHigh', 'uMir'].forEach(n => U[n] = gl.getUniformLocation(prog, n));
 U.uP = gl.getUniformLocation(prog, 'uP[0]');
@@ -285,8 +3176,8 @@ const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
 
 /* ---------- audio analysis -> palette ---------- */
 let ac = null, an = null, fd = null, sr = 48000;
-const band = [0, 0, 0], peak = [.1, .1, .1];   // bass / mid / high, auto-normalised per band
-let cent = .4;                                   // spectral centroid (0..1, log scale)
+const band = [0, 0, 0], peak = [.1, .1, .1];
+let cent = .4;
 const N = 7, cur = new Float32Array(24), tgt = new Float32Array(24);
 
 function analyse() {
@@ -297,9 +3188,9 @@ function analyse() {
     const i0 = bin(a), i1 = Math.max(bin(b), i0 + 1); let s = 0;
     for (let i = i0; i < i1; i++) s += fd[i];
     const raw = s / (i1 - i0) / 255;
-    peak[k] = Math.max(peak[k] * .997, raw, .05);          // software AGC: reacts the same on quiet or loud mics
+    peak[k] = Math.max(peak[k] * .997, raw, .05);
     const v = Math.min(1, raw / peak[k] * S.sens * (raw > .02 ? 1 : raw / .02));
-    band[k] += (v - band[k]) * (v > band[k] ? .55 : .1);   // fast attack, slow release
+    band[k] += (v - band[k]) * (v > band[k] ? .55 : .1);
   });
   let num = 0, den = 0;
   for (let i = 1, e = bin(8000); i < e; i++) { num += i * fd[i]; den += fd[i]; }
@@ -320,8 +3211,7 @@ function updatePalette(t) {
   for (let i = 0; i < N * 3; i++) cur[i] += (tgt[i] - cur[i]) * S.resp;
 }
 
-
-/* ---------- interactive dot-grid background (idle screen) ---------- */
+/* ---------- interactive dot-grid background ---------- */
 const gc = $('#grid'), g2 = gc.getContext('2d');
 const GAP = 26, R = 120, STOPS = [[0, 52, 62, 110], [.25, 47, 95, 176], [.5, 27, 154, 166], [.75, 79, 170, 90], [1, 181, 194, 48]];
 const LUT = Array.from({ length: 64 }, (_, i) => {
@@ -340,7 +3230,7 @@ sizeGrid(); addEventListener('resize', sizeGrid);
 addEventListener('pointermove', e => { px = e.clientX; py = e.clientY; lastMove = performance.now(); }, { passive: true });
 document.addEventListener('pointerleave', () => { px = py = -1e4; });
 function drawGrid(now, aud) {
-  if (now - lastMove > 2500) {            // nobody pointing: a virtual cursor wanders so it stays alive
+  if (now - lastMove > 2500) {
     const t = now / 1000; px = gW * (.5 + .32 * Math.sin(t * .45)); py = gH * (.5 + .28 * Math.sin(t * .31 + 1.3));
   }
   g2.setTransform(dpr, 0, 0, dpr, 0, 0); g2.clearRect(0, 0, gW, gH);
@@ -349,13 +3239,13 @@ function drawGrid(now, aud) {
     const x = ox + c * GAP, y = oy + r * GAP, i = r * gCols + c;
     const d2 = ((x - px) ** 2 + (y - py) ** 2) / (R * R);
     let tg = Math.exp(-d2 * 1.6);
-    if (aud) {                              // overlay mode: bass ring + mid swell + treble sparkle
+    if (aud) {
       const dc = Math.hypot(x - gW / 2, y - gH / 2), ring = (now * .24) % (Math.hypot(gW, gH) / 2 + 80);
       tg = Math.max(tg, band[0] * Math.exp(-(((dc - ring) / 55) ** 2)) * .95,
         band[1] * .3 * (.5 + .5 * Math.sin(x * .017 + y * .013 + now * .0021)),
         band[2] * ((Math.sin(c * 12.9898 + r * 78.233 + (now * .006 | 0)) * 43758.5453 % 1 + 1) % 1 > .93 ? .8 : 0));
     }
-    gV[i] += (tg - gV[i]) * (tg > gV[i] ? .3 : .045);          // quick grow, slow fade = trail
+    gV[i] += (tg - gV[i]) * (tg > gV[i] ? .3 : .045);
     const v = gV[i], s = 2 + 12 * Math.pow(v, 1.15);
     g2.fillStyle = LUT[Math.min(63, v * 63 | 0)];
     g2.beginPath();
@@ -364,21 +3254,56 @@ function drawGrid(now, aud) {
   }
 }
 
-/* ---------- render loop ---------- */
+/* ---------- active sources + render loop ---------- */
+let videoSource = null, audioSource = null;
 const sw = $('#sw'); for (let i = 0; i < N; i++) sw.appendChild(document.createElement('span'));
 let t0 = performance.now(), fN = 0, fT = t0, tick = 0;
+
+function status(msg, err) {
+  $('#st').textContent = msg;
+  body.classList.toggle('err', !!err);
+}
+function syncSourceState() {
+  if (!run) { $('#srcState').textContent = ''; return; }
+  const vs = videoSource ? videoSource.sm.state : 'idle';
+  const as = audioSource ? audioSource.sm.state : 'idle';
+  $('#srcState').textContent = `video ${vs} · audio ${as}`;
+  body.classList.toggle('on', vs === 'live');
+  if (vs === 'error' || as === 'error') {
+    const detail = (videoSource && videoSource.sm.detail) || (audioSource && audioSource.sm.detail) || 'source error';
+    status(detail, true);
+  } else if (vs === 'reconnecting') {
+    status(videoSource.sm.detail || 'Reconnecting…', false);
+  } else if (vs === 'connecting') {
+    status('Connecting…', false);
+  } else if (vs === 'live' && as === 'live') {
+    status(micMuted ? 'Mic muted' : 'Live', false);
+  }
+}
+function watchSource(src) {
+  if (!src) return;
+  src.sm.on(() => { syncSourceState(); });
+}
+function uploadFrame(frame, w, h) {
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, frame);
+}
 function frame(now) {
   requestAnimationFrame(frame);
   if (!run) { drawGrid(now, false); return; }
   const w = innerWidth, h = innerHeight;
   if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; gl.viewport(0, 0, w, h); }
-  if (vid.readyState >= 2 && vid.videoWidth) {
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, vid);
-  } else return;
+  const frameObj = videoSource && videoSource.frame();
+  if (!frameObj) return;
+  const [fw, fh] = videoSource.size();
+  if (!fw || !fh) return;
+  uploadFrame(frameObj, fw, fh);
+  videoSource.releaseFrame(frameObj);
+
+  an = audioSource ? audioSource.analyser : null;
   const t = (now - t0) / 1000;
   analyse(); updatePalette(t);
-  const ca = w / h, va = vid.videoWidth / vid.videoHeight;
+  const ca = w / h, va = fw / fh;
   gl.uniform1i(U.uT, 0);
   gl.uniform2f(U.uR, w, h);
   gl.uniform2f(U.uCov, ca > va ? 1 : ca / va, ca > va ? va / ca : 1);
@@ -394,20 +3319,505 @@ function frame(now) {
   if (ov) drawGrid(now, true);
   fN++;
   if (now - fT > 500) { $('#fps').textContent = Math.round(fN * 1000 / (now - fT)) + ' fps'; fN = 0; fT = now; }
+  syncSourceState();
+  updateActiveMicMeter();
 }
 requestAnimationFrame(frame);
 
-/* ---------- UI ---------- */
+/* ---------- start / stop / connect ---------- */
+function defaultLocalSource() {
+  const src = normalizeSource({
+    id: uid(), kind: 'local', name: 'Local camera',
+    deviceId: selected.video || '', audioDeviceId: selected.audio || ''
+  });
+  return src;
+}
+function currentLocalSource() {
+  const src = activeSource();
+  if (src && src.kind === 'local') return src;
+  return defaultLocalSource();
+}
+async function connectVideo(src) {
+  if (src.kind === 'remote') {
+    connectRemoteVideo(src);
+    return;
+  }
+  if (videoSource) { videoSource.stop(); videoSource = null; }
+  const local = new LocalCameraSource(src.id, src.deviceId || '');
+  watchSource(local);
+  videoSource = local;
+  if (src.deviceId) selected.video = src.deviceId;
+  await local.start();
+}
+const micQuality = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, sampleRate: 0 };
+async function connectAudio(deviceId) {
+  if (audioSource) { audioSource.stop(); audioSource = null; }
+  an = null;
+  remoteAudioPeerId = null;
+  if (!deviceId) {
+    audioSource = new SilentAudioSource('silent');
+    watchSource(audioSource);
+    await audioSource.start();
+    return;
+  }
+  const mic = new LocalMicSource(deviceId, { ...micQuality });
+  watchSource(mic);
+  audioSource = mic;
+  await mic.start();
+}
+async function start() {
+  if (run) return;
+  let src = activeSource();
+  if (!src || src.kind === 'network' || (src.kind === 'remote' && !remoteSourceFor(src))) {
+    src = defaultLocalSource();
+    store.activeId = src.id;
+    upsertSource(src);
+  }
+  run = true;
+  body.classList.add('on');
+  status('Connecting…');
+  await connectVideo(src);
+  if (remoteAudioPeerId) connectRemoteAudio(remoteAudioPeerId);
+  else await connectAudio(src.audioDeviceId || selected.audio || '');
+  wake();
+}
+function stop() {
+  run = false;
+  body.classList.remove('on', 'err', 'idle');
+  if (videoSource) { videoSource.stop(); videoSource = null; }
+  if (audioSource) { audioSource.stop(); audioSource = null; }
+  an = null;
+  try { if (localProbe.ctx) stopMicProbe(); } catch (e) {}
+  $('#fps').textContent = '';
+  status('Stopped');
+  syncSourceState();
+}
+$('#go').onclick = () => run ? stop() : start();
+
+/* ---------- saved sources ---------- */
+async function connectSaved(src) {
+  store.activeId = src.id;
+  saveStore();
+  if (src.kind === 'local') {
+    if (run) { await connectVideo(src); await connectAudio(src.audioDeviceId || selected.audio || ''); }
+    else await start();
+  } else if (src.kind === 'remote') {
+    if (!run) await start();
+    else connectRemoteVideo(src);
+    if (remoteAudioPeerId) connectRemoteAudio(remoteAudioPeerId);
+  } else {
+    status('Network sources need the Bridge', true);
+  }
+  renderSources();
+}
+
+/* ---------- device enumeration ---------- */
+const devNote = () => $('#devNote');
+async function listDevices() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return [];
+  try { return await navigator.mediaDevices.enumerateDevices(); } catch (e) { return []; }
+}
+async function requestPermissions() {
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    s.getTracks().forEach(t => t.stop());
+    await refreshDevices();
+    return true;
+  } catch (err) {
+    const note = devNote();
+    if (note) note.textContent = 'Permission denied. Allow camera and microphone in the address bar, then try again.';
+    return false;
+  }
+}
+async function refreshDevices() {
+  const list = await listDevices();
+  const camSelect = $('#camSelect'), micSelect = $('#micSelect');
+  const fill = (sel, items, empty, key) => {
+    if (!sel) return;
+    const prev = selected[key] || sel.value;
+    sel.innerHTML = '';
+    if (!items.length) {
+      const o = document.createElement('option'); o.value = ''; o.textContent = empty; sel.appendChild(o); return;
+    }
+    items.forEach((d, i) => {
+      const o = document.createElement('option');
+      o.value = d.deviceId; o.textContent = d.label || ('Device ' + (i + 1));
+      sel.appendChild(o);
+    });
+    if (prev && items.some(d => d.deviceId === prev)) sel.value = prev;
+    else selected[key] = sel.value;
+  };
+  fill(camSelect, list.filter(d => d.kind === 'videoinput'), 'No camera found', 'video');
+  fill(micSelect, list.filter(d => d.kind === 'audioinput'), 'No microphone found', 'audio');
+  if (camSelect && camSelect.value) selected.video = camSelect.value;
+  if (micSelect && micSelect.value) selected.audio = micSelect.value;
+  const note = devNote();
+  if (note) note.textContent = list.some(d => !d.label) ? 'Device names appear after you allow access.' : '';
+  renderMicProbeList(list.filter(d => d.kind === 'audioinput'));
+}
+
+/* ---------- mic panel: quality, per-mic visualizer ---------- */
+const localProbe = { stream: null, ctx: null, analyser: null, data: null, raf: 0, bar: null, deviceId: null };
+function stopMicProbe() {
+  cancelAnimationFrame(localProbe.raf); localProbe.raf = 0;
+  if (localProbe.stream) localProbe.stream.getTracks().forEach(t => t.stop());
+  if (localProbe.ctx) localProbe.ctx.close().catch(() => {});
+  localProbe.stream = null; localProbe.ctx = null; localProbe.analyser = null; localProbe.bar = null; localProbe.deviceId = null;
+}
+async function startMicProbe(deviceId, bar) {
+  stopMicProbe();
+  localProbe.bar = bar;
+  bar.style.width = '0%';
+  try {
+    const audio = { echoCancellation: !!micQuality.echoCancellation, noiseSuppression: !!micQuality.noiseSuppression, autoGainControl: !!micQuality.autoGainControl };
+    if (deviceId) audio.deviceId = { exact: deviceId };
+    localProbe.stream = await navigator.mediaDevices.getUserMedia({ audio, video: false });
+    localProbe.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    await localProbe.ctx.resume().catch(() => {});
+    localProbe.analyser = localProbe.ctx.createAnalyser();
+    localProbe.analyser.fftSize = 1024;
+    localProbe.ctx.createMediaStreamSource(localProbe.stream).connect(localProbe.analyser);
+    localProbe.data = new Uint8Array(localProbe.analyser.fftSize);
+    localProbe.deviceId = deviceId;
+    const loop = () => {
+      if (!localProbe.analyser) return;
+      localProbe.analyser.getByteTimeDomainData(localProbe.data);
+      let sum = 0;
+      for (let i = 0; i < localProbe.data.length; i++) { const v = (localProbe.data[i] - 128) / 128; sum += v * v; }
+      const rms = Math.sqrt(sum / localProbe.data.length);
+      if (localProbe.bar) localProbe.bar.style.width = Math.min(100, rms * 380) + '%';
+      localProbe.raf = requestAnimationFrame(loop);
+    };
+    loop();
+  } catch (err) {
+    if (bar) bar.style.width = '0%';
+    status('Mic test failed: ' + errorText(err), true);
+  }
+}
+function updateActiveMicMeter() {
+  const bar = document.querySelector('#activeMicLevel');
+  if (!bar) return;
+  const analyser = audioSource && audioSource.analyser;
+  if (!analyser) { bar.style.width = '0%'; return; }
+  const data = new Uint8Array(analyser.fftSize);
+  analyser.getByteTimeDomainData(data);
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
+  bar.style.width = Math.min(100, Math.sqrt(sum / data.length) * 380) + '%';
+}
+function renderMicProbeList(mics) {
+  const host = document.querySelector('#micProbeList');
+  if (!host) return;
+  host.innerHTML = '';
+  if (!mics.length) { host.innerHTML = '<div class="hintline">No microphones found.</div>'; return; }
+  mics.forEach((mic, i) => {
+    const row = document.createElement('div');
+    row.className = 'mic-row';
+    row.innerHTML = `<div><div class="name">${escapeHtml(mic.label || ('Microphone ' + (i + 1)))}</div><div class="meter"><i></i></div></div>`;
+    const test = document.createElement('button');
+    test.className = 'btn sm'; test.textContent = 'Test';
+    test.onclick = () => startMicProbe(mic.deviceId, row.querySelector('.meter>i'));
+    const use = document.createElement('button');
+    use.className = 'btn sm primary'; use.textContent = 'Use';
+    use.onclick = async () => {
+      selected.audio = mic.deviceId;
+      if (audioSource) { audioSource.stop(); audioSource = null; }
+      await connectAudio(mic.deviceId);
+      const sel = $('#micSelect'); if (sel) sel.value = mic.deviceId;
+      syncSourceState();
+    };
+    row.appendChild(test); row.appendChild(use);
+    host.appendChild(row);
+  });
+}
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+/* ---------- sources panel ---------- */
+let sourceTab = 'local';
+const sourcesPanel = $('#sources');
+const srcTabs = $('#srcTabs');
+const srcTabContent = $('#srcTabContent');
+const SOURCE_TABS = [
+  ['local', 'Local'], ['remote', 'Remote'], ['network', 'Network'], ['saved', 'Saved']
+];
+SOURCE_TABS.forEach(([key, label]) => {
+  const b = document.createElement('button'); b.textContent = label; b.dataset.tab = key;
+  b.onclick = () => { sourceTab = key; renderSources(); };
+  srcTabs.appendChild(b);
+});
+function renderSources() {
+  [...srcTabs.children].forEach(b => b.classList.toggle('on', b.dataset.tab === sourceTab));
+  if (sourceTab === 'local') renderLocalTab();
+  else if (sourceTab === 'remote') renderRemoteTab();
+  else if (sourceTab === 'network') renderNetworkTab();
+  else renderSavedTab();
+}
+function renderLocalTab() {
+  srcTabContent.innerHTML = `
+    <div class="tabpane" id="tab-local">
+      <div class="field"><span>Camera</span><select id="camSelect"></select></div>
+      <div class="field"><span>Microphone</span><select id="micSelect"></select></div>
+      <div class="inline">
+        <button class="btn primary" id="enableDevices">Enable camera &amp; mic</button>
+        <button class="btn" id="saveLocal">Save this source</button>
+      </div>
+      <small class="hintline" id="devNote"></small>
+      <div class="checkline"><input type="checkbox" id="micMute"> <label for="micMute" style="display:inline">Mute microphone</label></div>
+      <details open>
+        <summary>Microphone quality &amp; comparison</summary>
+        <div class="inner">
+          <div class="checkline"><input type="checkbox" id="qEcho"> <label for="qEcho" style="display:inline">Echo cancellation</label></div>
+          <div class="checkline"><input type="checkbox" id="qNoise"> <label for="qNoise" style="display:inline">Noise suppression</label></div>
+          <div class="checkline"><input type="checkbox" id="qAgc"> <label for="qAgc" style="display:inline">Auto gain (flattens dynamics)</label></div>
+          <div class="field"><span>Sample rate</span><select id="qRate">
+            <option value="0">Device default</option><option value="48000">48 kHz</option><option value="44100">44.1 kHz</option>
+          </select></div>
+          <div><div class="hintline">Active mic level</div><div class="meter"><i id="activeMicLevel"></i></div></div>
+          <div id="micProbeList" class="list"></div>
+        </div>
+      </details>
+      <div class="hintline">Any camera can be paired with any microphone. Switching one does not restart the other.</div>
+    </div>`;
+  const camSelect = $('#camSelect'), micSelect = $('#micSelect');
+  camSelect.onchange = async () => {
+    selected.video = camSelect.value;
+    const src = currentLocalSource();
+    src.deviceId = camSelect.value;
+    upsertSource(src);
+    store.activeId = src.id;
+    if (run) await connectVideo(src);
+    renderSavedTab();
+  };
+  micSelect.onchange = async () => {
+    selected.audio = micSelect.value;
+    store.activeAudioDeviceId = micSelect.value;
+    const src = currentLocalSource();
+    src.audioDeviceId = micSelect.value;
+    upsertSource(src);
+    saveStore();
+    if (run) await connectAudio(micSelect.value);
+  };
+  $('#enableDevices').onclick = requestPermissions;
+  $('#saveLocal').onclick = () => {
+    const src = { id: uid(), kind: 'local', name: 'Local camera', deviceId: selected.video || '', audioDeviceId: selected.audio || '' };
+    upsertSource(src); store.activeId = src.id; saveStore(); renderSources();
+    status('Source saved');
+  };
+  $('#micMute').checked = micMuted;
+  $('#micMute').onchange = () => toggleMic();
+  $('#qEcho').checked = micQuality.echoCancellation;
+  $('#qNoise').checked = micQuality.noiseSuppression;
+  $('#qAgc').checked = micQuality.autoGainControl;
+  $('#qRate').value = String(micQuality.sampleRate || 0);
+  $('#qEcho').onchange = e => { micQuality.echoCancellation = e.target.checked; if (audioSource) reconnectAudio(); };
+  $('#qNoise').onchange = e => { micQuality.noiseSuppression = e.target.checked; if (audioSource) reconnectAudio(); };
+  $('#qAgc').onchange = e => { micQuality.autoGainControl = e.target.checked; if (audioSource) reconnectAudio(); };
+  $('#qRate').onchange = e => { micQuality.sampleRate = +e.target.value; if (audioSource) reconnectAudio(); };
+  refreshDevices();
+}
+function reconnectAudio() {
+  const id = selected.audio || (activeSource() && activeSource().audioDeviceId) || '';
+  if (audioSource) { audioSource.stop(); audioSource = null; }
+  connectAudio(id).then(syncSourceState);
+}
+function renderRemoteTab() {
+  if (!remote.room) {
+    srcTabContent.innerHTML = `
+      <div class="tabpane">
+        <div class="notice info">Remote devices use WebRTC (Tier 0, no install). Create a room, show the QR code, and a phone or another browser becomes a selectable source.</div>
+        <div class="hintline">Signaling: <span class="mono">${escapeHtml(BACKEND)}</span> · media is peer-to-peer unless TURN relays it.</div>
+        <button class="btn primary" id="createRoom">Create remote room</button>
+        <div class="field" style="margin-top:6px"><span>Join a room (optional)</span><input id="joinCodeInput" type="text" placeholder="6-character code" maxlength="6"></div>
+        <div class="inline"><button class="btn" id="joinCodeBtn">Join with code</button></div>
+      </div>`;
+    $('#createRoom').onclick = createRemoteRoom;
+    $('#joinCodeBtn').onclick = () => {
+      const code = ($('#joinCodeInput').value || '').trim().toUpperCase();
+      if (code) joinAsGuest(code);
+    };
+    return;
+  }
+  const deviceRows = [...remote.devices.values()].map(entry => {
+    const inUse = videoSource instanceof RemoteDeviceSource && videoSource.peerId === entry.peerId;
+    const audioUse = remoteAudioPeerId === entry.peerId;
+    return `<div class="item">
+      <div class="meta"><div class="name">${escapeHtml(entry.label)}</div>
+        <div class="sub"><span class="badge ${entry.state === 'live' || entry.state === 'connected' ? 'live' : entry.state === 'connecting' ? 'warn' : 'err'}">${escapeHtml(entry.state)}</span>
+        ${entry.stream && entry.stream.getAudioTracks().length ? ' · mic shared' : ''}${entry.stream && entry.stream.getVideoTracks().length ? ' · camera shared' : ''}</div>
+      </div>
+      <div class="actions">
+        <button class="btn sm ${inUse ? 'primary' : ''}" data-use-video="${escapeHtml(entry.peerId)}" ${!entry.stream ? 'disabled' : ''}>Video</button>
+        <button class="btn sm ${audioUse ? 'primary' : ''}" data-use-audio="${escapeHtml(entry.peerId)}" ${!entry.stream || !entry.stream.getAudioTracks().length ? 'disabled' : ''}>Audio</button>
+      </div>
+    </div>`;
+  }).join('');
+  srcTabContent.innerHTML = `
+    <div class="tabpane">
+      <div class="notice info">Room <b>${escapeHtml(remote.room.code)}</b> expires in about ${Math.max(1, Math.round((remote.room.expiresAt - Date.now()) / 60000))} min. Join is one-time per device; reconnect is allowed briefly after a drop.</div>
+      <div class="qr" id="roomQR"></div>
+      <div class="codebox">${escapeHtml(remote.room.code)}</div>
+      <div class="hintline mono" style="word-break:break-all">${escapeHtml(remote.joinUrl)}</div>
+      <div class="inline"><button class="btn" id="copyRoom">Copy link</button><button class="btn" id="refreshRoom">New room</button><button class="btn danger" id="leaveRoom">Close room</button></div>
+      <div class="hintline" id="roomState">${remote.ws && remote.ws.readyState === WebSocket.OPEN ? 'Waiting for devices…' : 'Connecting to signaling…'}</div>
+      <div class="list" id="remoteDevices">${deviceRows || '<div class="hintline">No remote devices yet. Scan the QR code with a phone.</div>'}</div>
+      <div class="hintline">Mix and match: use a remote camera with your local mic, or a local camera with a remote mic.</div>
+    </div>`;
+  const qrHost = $('#roomQR');
+  if (qrHost && typeof qrcode === 'function') {
+    try {
+      const qr = qrcode(0, 'M');
+      qr.addData(remote.joinUrl);
+      qr.make();
+      qrHost.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+    } catch (e) { qrHost.textContent = 'QR unavailable'; }
+  }
+  $('#copyRoom').onclick = async () => {
+    try { await navigator.clipboard.writeText(remote.joinUrl); status('Room link copied'); }
+    catch (e) { status(remote.joinUrl); }
+  };
+  $('#refreshRoom').onclick = () => { leaveRemoteRoom(); createRemoteRoom(); };
+  $('#leaveRoom').onclick = () => { leaveRemoteRoom(); renderRemoteTab(); };
+  document.querySelectorAll('[data-use-video]').forEach(btn => {
+    btn.onclick = () => {
+      const peerId = btn.dataset.useVideo;
+      const entry = remote.devices.get(peerId);
+      if (!entry || !entry.stream) return;
+      const src = { id: 'remote-' + peerId, kind: 'remote', name: entry.label, peerId, roomCode: remote.room.code };
+      const existing = store.sources.find(s => s.id === src.id);
+      if (existing) Object.assign(existing, src); else store.sources.push(src);
+      saveStore();
+      if (!run) start(); else connectRemoteVideo(src);
+    };
+  });
+  document.querySelectorAll('[data-use-audio]').forEach(btn => {
+    btn.onclick = () => {
+      const peerId = btn.dataset.useAudio;
+      if (!run) { remoteAudioPeerId = peerId; }
+      else connectRemoteAudio(peerId);
+      renderRemoteTab();
+    };
+  });
+}
+function renderNetworkTab() {
+  srcTabContent.innerHTML = `
+    <div class="tabpane">
+      <div class="notice">Browsers cannot speak multicast/UDP/RTSP or discover LAN devices. Network cameras and smart lights need the optional local <b>Bridge</b> app (Tier 1). Nothing on this page requires it.</div>
+      <div class="field"><span>Bridge status</span><div id="bridgeStatus" class="hintline">Not checked yet.</div></div>
+      <div class="inline"><button class="btn" id="findBridge">Find Bridge</button><button class="btn" id="installBridge">Install Bridge</button></div>
+      <div class="field"><span>Manual URL (last resort)</span><input id="manualUrl" type="text" placeholder="rtsp://user:pass@192.168.1.50:554/stream"></div>
+      <div class="inline"><button class="btn primary" id="addManual">Add network source</button></div>
+      <div class="hintline">Discovery, credentials and bridge pairing arrive in Phases 4–6.</div>
+    </div>`;
+  $('#findBridge').onclick = () => probeBridge(true);
+  $('#installBridge').onclick = () => showInstallBridge();
+  $('#addManual').onclick = () => {
+    const url = ($('#manualUrl').value || '').trim();
+    if (!url) return;
+    status('Network sources need the Bridge (Phase 4)', true);
+  };
+}
+function renderSavedTab() {
+  srcTabContent.innerHTML = '<div class="tabpane"><div id="savedList" class="list"></div></div>';
+  const host = $('#savedList');
+  if (!store.sources.length) {
+    host.innerHTML = '<div class="hintline">No saved sources yet. Save a local source on the Local tab.</div>';
+    return;
+  }
+  store.sources.forEach(src => {
+    const row = document.createElement('div');
+    row.className = 'item';
+    const active = src.id === store.activeId;
+    row.innerHTML = `<div class="meta"><div class="name">${escapeHtml(src.name)}</div><div class="sub">${escapeHtml(src.kind)}${active ? ' · active' : ''}</div></div>`;
+    const actions = document.createElement('div'); actions.className = 'actions';
+    const connect = document.createElement('button'); connect.className = 'btn sm primary'; connect.textContent = 'Connect';
+    connect.onclick = () => connectSaved(src);
+    const remove = document.createElement('button'); remove.className = 'btn sm danger'; remove.textContent = 'Remove';
+    remove.onclick = () => { if (src.id === store.activeId && run) stop(); removeSource(src.id); };
+    actions.appendChild(connect); actions.appendChild(remove);
+    row.appendChild(actions); host.appendChild(row);
+  });
+}
+function toggleSources(force) {
+  const open = force === undefined ? !sourcesPanel.classList.contains('open') : force;
+  sourcesPanel.classList.toggle('open', open);
+  $('#srcBtn').classList.toggle('on', open);
+  if (open) {
+    closeTune(); closeIntegrations();
+    if (sourceTab === 'local') renderSources();
+    else renderSources();
+    wake();
+  }
+}
+$('#srcBtn').onclick = e => { e.stopPropagation(); toggleSources(); };
+$('#close-sources').onclick = () => toggleSources(false);
+document.addEventListener('pointerdown', e => {
+  if (sourcesPanel.classList.contains('open') && !sourcesPanel.contains(e.target) && !$('#srcBtn').contains(e.target)) toggleSources(false);
+});
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+  navigator.mediaDevices.addEventListener('devicechange', () => {
+    refreshDevices();
+    if (run && videoSource && videoSource.sm.state !== 'live') videoSource.start();
+  });
+}
+
+/* ---------- bridge detection (used from Phase 4 onward) ---------- */
+let bridge = { found: false, port: null, token: null, version: null };
+async function probeBridge(explain) {
+  if (explain) {
+    const statusEl = document.querySelector('#bridgeStatus');
+    if (statusEl) statusEl.textContent = 'Checking 127.0.0.1:8765–8767 (first local request — your browser may ask for permission)…';
+  }
+  for (const port of BRIDGE_PORTS) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 1200);
+      const resp = await fetch(bridgeURL(port, '/health'), { signal: ctrl.signal, cache: 'no-store' });
+      clearTimeout(timer);
+      if (resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        bridge = { found: true, port, token: bridge.token, version: data.version || null };
+        const statusEl = document.querySelector('#bridgeStatus');
+        if (statusEl) statusEl.textContent = `Bridge found on 127.0.0.1:${port}${data.version ? ' · v' + data.version : ''}.`;
+        return true;
+      }
+    } catch (e) {}
+  }
+  bridge = { found: false, port: null, token: null, version: null };
+  const statusEl = document.querySelector('#bridgeStatus');
+  if (statusEl) statusEl.textContent = 'No Bridge found. Install it to use network cameras and local smart lights.';
+  return false;
+}
+function showInstallBridge() {
+  status('Bridge download is documented in BRIDGE_INSTALL.md (Phase 6)', true);
+}
+
+/* ---------- mic mute ---------- */
+function toggleMic() {
+  if (!audioSource || audioSource.sm.state !== 'live') {
+    status(run ? 'No microphone available' : 'Start the feed to use the mic');
+    return;
+  }
+  micMuted = !micMuted;
+  if (audioSource.stream) audioSource.stream.getAudioTracks().forEach(t => { t.enabled = !micMuted; });
+  $('#micBtn').classList.toggle('off', micMuted);
+  $('#micBtn').title = micMuted ? 'Microphone (muted)' : 'Microphone (mute)';
+  const box = $('#micMute'); if (box) box.checked = micMuted;
+  status(micMuted ? 'Mic muted' : 'Live');
+}
+$('#micBtn').onclick = e => { e.stopPropagation(); toggleMic(); };
+
+/* ---------- modes / tune / grid / presets ---------- */
 const seg = $('#seg'), hl = seg.firstElementChild;
 MODES.forEach((m, i) => { const b = document.createElement('button'); b.textContent = m; b.onclick = () => setMode(i); seg.appendChild(b); });
-function moveHl() { const b = seg.children[mode + 1]; hl.style.width = b.offsetWidth + 'px'; hl.style.transform = `translateX(${b.offsetLeft}px)`; }
+function moveHl() { const b = seg.children[mode + 1]; if (!b) return; hl.style.width = b.offsetWidth + 'px'; hl.style.transform = `translateX(${b.offsetLeft}px)`; }
 function setMode(i) {
   mode = i; [...seg.children].forEach((b, k) => b.classList.toggle('on', k === i + 1));
-  const p = PRESETS[mode];
-  S = p;
+  const p = PRESETS[mode]; S = p;
   const sPix = document.getElementById('sPix'), sSens = document.getElementById('sSens'), sResp = document.getElementById('sResp');
   sPix.value = p.pix; sSens.value = p.sens; sResp.value = p.resp;
-  [sPix, sSens, sResp].forEach(el => { el.dispatchEvent(new Event('input')); });
+  [sPix, sSens, sResp].forEach(el => el.dispatchEvent(new Event('input')));
   moveHl(); seg.children[i + 1].scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
 }
 setMode(0); addEventListener('resize', moveHl); document.fonts && document.fonts.ready.then(moveHl);
@@ -420,84 +3830,15 @@ const fmt = { sPix: v => v + 'px', sSens: v => (+v).toFixed(1) + '×', sResp: v 
 });
 
 const tune = $('#tune'), tb = $('#tb');
-tb.onclick = e => { e.stopPropagation(); tune.classList.toggle('open'); tb.classList.toggle('on'); toggleDevices(false); };
-document.addEventListener('pointerdown', e => { if (!tune.contains(e.target) && !tb.contains(e.target)) { tune.classList.remove('open'); tb.classList.remove('on'); } });
-
-/* ---------- camera / microphone ---------- */
-const devicesPanel = $('#devices'), camBtn = $('#camBtn'), micBtn = $('#micBtn');
-const camSelect = $('#camSelect'), micSelect = $('#micSelect'), devNote = $('#devNote');
-
-async function refreshDevices() {
-  const md = navigator.mediaDevices;
-  if (!md || !md.enumerateDevices) { devNote.textContent = 'Device selection needs https or localhost.'; return; }
-  let list;
-  try { list = await md.enumerateDevices(); } catch (e) { return; }
-  const fill = (sel, items, empty, key) => {
-    const prev = selected[key];
-    sel.innerHTML = '';
-    if (!items.length) {
-      const o = document.createElement('option'); o.value = ''; o.textContent = empty; sel.appendChild(o);
-      return;
-    }
-    items.forEach((d, i) => {
-      const o = document.createElement('option');
-      o.value = d.deviceId; o.textContent = d.label || ('Device ' + (i + 1));
-      sel.appendChild(o);
-    });
-    if (prev && items.some(d => d.deviceId === prev)) sel.value = prev;
-    else selected[key] = sel.value;
-  };
-  fill(camSelect, list.filter(d => d.kind === 'videoinput'), 'No camera found', 'video');
-  fill(micSelect, list.filter(d => d.kind === 'audioinput'), 'No microphone found', 'audio');
-  devNote.textContent = list.some(d => !d.label) ? 'Device names appear after you allow access.' : '';
-}
-
-function toggleDevices(force) {
-  const open = force === undefined ? !devicesPanel.classList.contains('open') : force;
-  devicesPanel.classList.toggle('open', open);
-  camBtn.classList.toggle('on', open);
-  if (open) {
-    tune.classList.remove('open'); tb.classList.remove('on');
-    refreshDevices(); wake();
-  }
-}
-camBtn.onclick = e => { e.stopPropagation(); toggleDevices(); };
+function closeTune() { tune.classList.remove('open'); tb.classList.remove('on'); }
+tb.onclick = e => {
+  e.stopPropagation();
+  const open = !tune.classList.contains('open');
+  tune.classList.toggle('open', open); tb.classList.toggle('on', open);
+  if (open) { toggleSources(false); closeIntegrations(); }
+};
 document.addEventListener('pointerdown', e => {
-  if (devicesPanel.classList.contains('open') && !devicesPanel.contains(e.target) && !camBtn.contains(e.target)) toggleDevices(false);
-});
-
-async function switchStream() {
-  if (!run) return;
-  const muted = micMuted;
-  stop();
-  await start();
-  if (muted && run && hasMic) toggleMic();
-}
-camSelect.onchange = () => { selected.video = camSelect.value; if (run) switchStream(); };
-micSelect.onchange = () => { selected.audio = micSelect.value; if (run) switchStream(); };
-if (navigator.mediaDevices) navigator.mediaDevices.addEventListener?.('devicechange', refreshDevices);
-
-function toggleMic() {
-  if (!hasMic || !stream || !stream.getAudioTracks().length) {
-    status(run ? 'No microphone available' : 'Start the feed to use the mic');
-    return;
-  }
-  micMuted = !micMuted;
-  stream.getAudioTracks().forEach(t => { t.enabled = !micMuted; });
-  micBtn.classList.toggle('off', micMuted);
-  micBtn.title = micMuted ? 'Microphone (muted)' : 'Microphone (mute)';
-  status(micMuted ? 'Mic muted' : 'Live');
-}
-micBtn.onclick = e => { e.stopPropagation(); toggleMic(); };
-function toggleMirror() { mirror ^= 1; $('#mr').classList.toggle('on', !!mirror); }
-function toggleFs() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
-function toggleGrid() { ov = !ov; body.classList.toggle('ov', ov); $('#gd').classList.toggle('on', ov); }
-$('#gd').onclick = toggleGrid; $('#mr').onclick = toggleMirror; $('#fs').onclick = toggleFs;
-addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' || e.ctrlKey || e.metaKey) return;
-  if (e.key >= '1' && e.key <= '5') setMode(+e.key - 1);
-  else if (e.key === ' ') { e.preventDefault(); $('#go').click(); }
-  else if (e.key === 'f') toggleFs(); else if (e.key === 'm') toggleMirror(); else if (e.key === 'g') toggleGrid();
+  if (!tune.contains(e.target) && !tb.contains(e.target)) closeTune();
 });
 
 const presetName = document.getElementById('presetName');
@@ -526,97 +3867,117 @@ presetLoad.onclick = () => {
   [sPix, sSens, sResp].forEach(el => el.dispatchEvent(new Event('input')));
 };
 refreshPresets();
-let hideT;
-function wake() {
-  body.classList.remove('idle'); clearTimeout(hideT);
-  hideT = setTimeout(() => { if (run && !$('#dock').matches(':hover') && !tune.classList.contains('open') && !integrationsOpen) body.classList.add('idle'); }, 3000);
-}
-['mousemove', 'pointerdown', 'touchstart', 'keydown'].forEach(ev => addEventListener(ev, wake, { passive: true }));
 
-/* ---------- integrations panel ---------- */
+function toggleMirror() { mirror ^= 1; $('#mr').classList.toggle('on', !!mirror); }
+function toggleFs() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
+function toggleGrid() { ov = !ov; body.classList.toggle('ov', ov); $('#gd').classList.toggle('on', ov); }
+$('#gd').onclick = toggleGrid; $('#mr').onclick = toggleMirror; $('#fs').onclick = toggleFs;
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.ctrlKey || e.metaKey) return;
+  if (e.key >= '1' && e.key <= '5') setMode(+e.key - 1);
+  else if (e.key === ' ') { e.preventDefault(); $('#go').click(); }
+  else if (e.key === 'f') toggleFs(); else if (e.key === 'm') toggleMirror(); else if (e.key === 'g') toggleGrid();
+});
+
+/* ---------- integrations panel (expanded in Phase 7) ---------- */
 let integrationsOpen = false;
 const integrationPanel = $('#integrations-panel');
-const closeIntegrations = $('#close-integrations');
 const integrationTabs = $('#integration-tabs');
 const integrationContent = $('#integration-tab-content');
-
 function toggleIntegrations(force) {
   integrationsOpen = force === undefined ? !integrationsOpen : force;
-  integrationPanel.style.opacity = integrationsOpen ? '1' : '0';
-  integrationPanel.style.transform = integrationsOpen ? 'translateY(0) scale(1)' : 'translateY(10px) scale(.94)';
-  integrationPanel.style.pointerEvents = integrationsOpen ? 'auto' : 'none';
+  integrationPanel.classList.toggle('open', integrationsOpen);
   $('#integration').classList.toggle('on', integrationsOpen);
-  if (integrationsOpen) wake();
+  if (integrationsOpen) {
+    toggleSources(false); closeTune();
+    renderIntegrationTab(integrationTab); wake();
+  }
 }
+function closeIntegrations() { toggleIntegrations(false); }
 $('#integration').onclick = e => { e.stopPropagation(); toggleIntegrations(); };
-closeIntegrations.onclick = () => toggleIntegrations(false);
+$('#close-integrations').onclick = () => toggleIntegrations(false);
 document.addEventListener('pointerdown', e => {
   if (integrationsOpen && !integrationPanel.contains(e.target) && !$('#integration').contains(e.target)) toggleIntegrations(false);
 });
 
-/* These integrations need a backend that doesn't exist yet, so the buttons
-   report that instead of throwing a ReferenceError. */
-const tabContent = {
-  local: `
-    <div style="margin-top:12px;">
-      <h4>Local Network (Tuya/IoT)</h4>
-      <p>Discover Tuya devices on your local network</p>
-      <button id="scan-tuya" style="width:100%;margin-top:8px;">Scan for Devices</button>
-      <div id="tuya-devices" style="margin-top:12px;max-height:200px;overflow:auto;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px;display:none;"></div>
-    </div>
-  `,
-  wifi: `
-    <div style="margin-top:12px;">
-      <h4>WiFi Devices</h4>
-      <p>Connect to WiFi-enabled equipment</p>
-      <input id="wifi-ssid" type="text" placeholder="SSID" style="width:100%;padding:8px;margin:8px 0;border:1px solid rgba(255,255,255,.18);border-radius:4px;">
-      <input id="wifi-password" type="password" placeholder="Password" style="width:100%;padding:8px;margin:8px 0;border:1px solid rgba(255,255,255,.18);border-radius:4px;">
-      <button id="connect-wifi" style="width:100%;margin-top:8px;">Connect</button>
-    </div>
-  `,
-  google: `
-    <div style="margin-top:12px;">
-      <h4>Google Home</h4>
-      <p>Connect to Google Home/Nest devices</p>
-      <button id="scan-google" style="width:100%;margin-top:8px;">Scan for Devices</button>
-      <div id="google-devices" style="margin-top:12px;max-height:200px;overflow:auto;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px;display:none;"></div>
-    </div>
-  `,
-  other: `
-    <div style="margin-top:12px;">
-      <h4>Other Providers</h4>
-      <p>Add integrations with other smart home providers</p>
-      <input id="other-provider" type="text" placeholder="Provider name" style="width:100%;padding:8px;margin:8px 0;border:1px solid rgba(255,255,255,.18);border-radius:4px;">
-      <button id="add-provider" style="width:100%;margin-top:8px;">Add Provider</button>
-    </div>
-  `
-};
-
-function renderTabContent(tab) {
-  integrationContent.innerHTML = tabContent[tab] || '';
-  [...integrationTabs.children].forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  const stub = label => () => {
-    const p = document.createElement('p');
-    p.style.cssText = 'margin-top:10px;color:var(--mut)';
-    p.textContent = label + ' is not available yet.';
-    integrationContent.appendChild(p);
-  };
-  const wire = (id, label) => { const el = document.getElementById(id); if (el) el.onclick = stub(label); };
-  wire('scan-tuya', 'Tuya discovery');
-  wire('connect-wifi', 'WiFi connect');
-  wire('scan-google', 'Google Home discovery');
-  wire('add-provider', 'Custom providers');
-}
-function switchTab(tab) { renderTabContent(tab); }
-
-['local', 'wifi', 'google', 'other'].forEach(tab => {
-  const b = document.createElement('button');
-  b.textContent = tab[0].toUpperCase() + tab.slice(1);
-  b.dataset.tab = tab;
-  b.onclick = () => switchTab(tab);
+let integrationTab = 'bridge';
+const INTEGRATION_TABS = [
+  ['bridge', 'Bridge/Local'], ['cloud', 'Cloud'], ['devices', 'Devices'], ['google', 'Google']
+];
+INTEGRATION_TABS.forEach(([key, label]) => {
+  const b = document.createElement('button'); b.textContent = label; b.dataset.tab = key;
+  b.onclick = () => { integrationTab = key; renderIntegrationTab(key); };
   integrationTabs.appendChild(b);
 });
-renderTabContent('local');
+function lightDriverModeLabel(caps) {
+  if (!caps) return 'unknown';
+  if (caps.streaming === false || caps.rate_mode === 'unavailable' || !(caps.max_rate_hz > 0)) return 'pairing only';
+  return `${caps.rate_mode || 'slow'} · ${caps.max_rate_hz} Hz`;
+}
+function renderLightDriverModes(capsByDriver) {
+  const host = $('#lightDriverModes');
+  if (!host) return;
+  const rows = Object.entries(capsByDriver || {}).map(([name, caps]) =>
+    `<div class="hintline">${escapeHtml(name)}: <span class="badge">${escapeHtml(lightDriverModeLabel(caps))}</span></div>`
+  );
+  host.innerHTML = rows.join('') || '<div class="hintline">No light drivers reported yet.</div>';
+}
+function renderIntegrationTab(tab) {
+  [...integrationTabs.children].forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  if (tab === 'bridge') {
+    integrationContent.innerHTML = `
+      <div class="tabpane">
+        <div class="hintline">Local smart lights are driven by the Bridge. The browser owns the audio→light mapping; the Bridge only sends frames to devices.</div>
+        <button class="btn" id="findBridge2">Check Bridge</button>
+        <div class="hintline" id="bridgeStatus2">Not checked yet.</div>
+        <div class="hintline">WiZ is the first driver (UDP, no keys). Tuya local, Hue Entertainment, LIFX LAN, Govee LAN and Matter follow in Phase 7.</div>
+      </div>`;
+    $('#findBridge2').onclick = async () => { const ok = await probeBridge(true); const el = $('#bridgeStatus2'); if (el) el.textContent = ok ? 'Bridge reachable.' : 'Bridge not found.'; };
+  } else if (tab === 'cloud') {
+    integrationContent.innerHTML = '<div class="tabpane"><div class="notice info">Optional cloud slow mode (no Bridge) is beat-level only (≤ 2 updates/s) and labelled low-fidelity. It needs the hosted backend OAuth configuration.</div></div>';
+  } else if (tab === 'devices') {
+    integrationContent.innerHTML = '<div class="tabpane"><div class="hintline">Discovered lights appear here once the Bridge is running.</div><div id="lightDriverModes"></div></div>';
+    if (window.__lfqLightCaps) renderLightDriverModes(window.__lfqLightCaps);
+  } else {
+    integrationContent.innerHTML = `<div class="tabpane"><div class="notice">Google Home cannot be controlled from a website: the Home APIs are native Android/iOS SDKs (preview, certification required). Use Matter or the device's native protocol through the Bridge instead.</div></div>`;
+  }
+}
+
+/* ---------- idle cursor ---------- */
+let hideT;
+function wake() {
+  body.classList.remove('idle'); clearTimeout(hideT);
+  hideT = setTimeout(() => {
+    if (run && !$('#dock').matches(':hover') && !tune.classList.contains('open') && !sourcesPanel.classList.contains('open') && !integrationsOpen) body.classList.add('idle');
+  }, 3000);
+}
+['mousemove', 'pointerdown', 'touchstart', 'keydown'].forEach(ev => addEventListener(ev, wake, { passive: true }));
+
+/* ---------- boot ---------- */
+loadStore();
+renderSources();
+refreshDevices();
+if ('mediaDevices' in navigator && navigator.mediaDevices.addEventListener) {
+  navigator.mediaDevices.addEventListener('devicechange', refreshDevices);
+}
+
+/* Remote join link: ?join=CODE.  The first camera/mic request happens only
+   after the user clicks "Share" (never on load). */
+const inviteCode = (new URLSearchParams(location.search).get('join') || '').trim().toUpperCase();
+if (inviteCode) {
+  const bar = $('#joinBar');
+  bar.hidden = false;
+  $('#joinTitle').textContent = 'Join room ' + inviteCode;
+  $('#joinNote').textContent = 'Allow camera and microphone to share this device. Your browser will ask for permission.';
+  $('#joinShare').textContent = 'Share camera & mic';
+  $('#joinShare').onclick = async () => {
+    if (guest.active) { leaveGuest(); $('#joinShare').textContent = 'Share camera & mic'; return; }
+    await joinAsGuest(inviteCode);
+    $('#joinShare').textContent = guest.active ? 'Stop sharing' : 'Share camera & mic';
+  };
+} else {
+  $('#joinBar').hidden = true;
+}
 </script>
 </body>
 </html>

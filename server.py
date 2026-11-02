@@ -32,6 +32,17 @@ import os
 import urllib.request
 import urllib.error
 
+from config import settings
+from security import (
+    URLValidationError,
+    http_limiter,
+    origin_allowed,
+    redact_url,
+    validate_fetch_url,
+    validate_proxy_url,
+    ws_limiter,
+)
+
 try:
     import tinytuya
     TINYTUA_AVAILABLE = True
@@ -51,12 +62,13 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = (
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from sound_device_processor import AudioPaletteQuantizer
+from signaling import router as signaling_router
 
 logger = logging.getLogger("live_feed_quantizer")
 
@@ -95,15 +107,17 @@ def _clamp(value, lo, hi):
 
 
 app = FastAPI(title="Live Feed Quantizer", version="2.0")
+app.include_router(signaling_router)
 
-# CORS: the browser client talks only to its own origin; this stays open so
-# separately-hosted frontends can still connect, but credentials are disabled
-# (the browser rejects wildcard origins combined with credentials anyway).
+# CORS: explicit origin allowlist instead of a wildcard.  The list is
+# configurable (LFQ_ALLOWED_ORIGINS) so a hosted deployment can add its own
+# origin without touching code.  Credentials stay disabled.
+_cors_origins = list(dict.fromkeys(settings.allowed_origins + [settings.public_origin]))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[o for o in _cors_origins if o],
     allow_credentials=False,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -122,17 +136,46 @@ async def health():
     return JSONResponse({"status": "ok"})
 
 
+def _request_origin_allowed(request: Request) -> bool:
+    return origin_allowed(request.headers.get("origin"), settings.allowed_origins)
+
+
 @app.get("/camera_proxy")
-async def camera_proxy(url: str = Query(..., description="IP camera snapshot URL to proxy")):
-    """Proxy a single frame from an IP camera, avoiding browser CORS restrictions."""
+async def camera_proxy(request: Request, url: str = Query(..., description="IP camera snapshot URL to proxy")):
+    """Proxy a single frame from an IP camera.
+
+    Disabled on hosted deployments by default: network cameras belong to the
+    local Bridge.  When explicitly enabled for development the URL is validated
+    (scheme + address range) and the client is rate limited.
+    """
+    if not _request_origin_allowed(request):
+        return JSONResponse({"error": "origin_not_allowed"}, status_code=403)
+    client = request.client.host if request.client else "unknown"
+    if not http_limiter.allow(client):
+        return JSONResponse({"error": "rate_limited"}, status_code=429)
+    if not settings.allow_server_camera:
+        return JSONResponse(
+            {"error": "camera_fetch_disabled", "detail": "Use the local Bridge for network cameras."},
+            status_code=403,
+        )
     try:
-        jpeg_bytes = await asyncio.to_thread(_fetch_frame, url)
+        safe_url = validate_proxy_url(url, resolve=True)
+    except URLValidationError as exc:
+        logger.warning("[CAMERA] Rejected proxy URL %s (%s)", redact_url(url), exc.reason)
+        return JSONResponse({"error": exc.reason}, status_code=400)
+
+    try:
+        jpeg_bytes = await asyncio.to_thread(_fetch_frame, safe_url)
     except Exception as exc:
-        logger.warning("[CAMERA] Proxy fetch failed for %s: %s", url, exc)
+        logger.warning("[CAMERA] Proxy fetch failed for %s: %s", redact_url(safe_url), exc)
         return JSONResponse({"error": str(exc)}, status_code=502)
     if not jpeg_bytes or jpeg_bytes[:2] != JPEG_SOI:
         return JSONResponse({"error": "Not a JPEG image"}, status_code=400)
-    return Response(content=jpeg_bytes, media_type="image/jpeg")
+    return Response(
+        content=jpeg_bytes,
+        media_type="image/jpeg",
+        headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "no-store"},
+    )
 
 
 def _looks_like_audio(data):
@@ -289,7 +332,7 @@ async def _ip_camera_loop(
     get_audio,
 ):
     """Background task: fetch frames from an IP camera, quantize, push over WS."""
-    logger.info("[CAMERA] IP camera loop started for %s", camera_url)
+    logger.info("[CAMERA] IP camera loop started for %s", redact_url(camera_url))
     while not stop_event.is_set():
         try:
             jpeg_bytes = await asyncio.to_thread(_fetch_frame, camera_url)
@@ -315,7 +358,7 @@ async def _ip_camera_loop(
             continue
 
         await asyncio.sleep(IP_CAMERA_INTERVAL)
-    logger.info("[CAMERA] IP camera loop stopped for %s", camera_url)
+    logger.info("[CAMERA] IP camera loop stopped for %s", redact_url(camera_url))
 
 
 async def _rtsp_stream_loop(
@@ -328,7 +371,7 @@ async def _rtsp_stream_loop(
     audio_gain: float,
 ):
     """Background task: open an RTSP stream via OpenCV, quantize frames, push over WS."""
-    logger.info("[CAMERA] RTSP stream loop started for %s", rtsp_url)
+    logger.info("[CAMERA] RTSP stream loop started for %s", redact_url(rtsp_url))
     cap = None
     try:
         cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
@@ -380,13 +423,19 @@ async def _rtsp_stream_loop(
     finally:
         if cap is not None:
             cap.release()
-        logger.info("[CAMERA] RTSP stream loop stopped for %s", rtsp_url)
+        logger.info("[CAMERA] RTSP stream loop stopped for %s", redact_url(rtsp_url))
 
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     client = websocket.client.host if websocket.client else "unknown"
+    origin = websocket.headers.get("origin")
+    if not origin_allowed(origin, settings.allowed_origins):
+        logger.warning("[WS] Rejected origin %r from %s", origin, client)
+        await send_json(websocket, {"type": "error", "detail": "origin_not_allowed"})
+        await websocket.close(code=1008)
+        return
     logger.info("[WS] Client connected (%s)", client)
 
     # Per-connection state: isolated quantizer + connection settings.
@@ -408,6 +457,11 @@ async def websocket_endpoint(websocket: WebSocket):
             msg = await websocket.receive()
 
             if msg.get("type") == "websocket.disconnect":
+                break
+
+            if not ws_limiter.allow(client):
+                logger.warning("[WS] Rate limit exceeded (%s)", client)
+                await send_json(websocket, {"type": "error", "detail": "rate_limited"})
                 break
 
             # --- binary: JPEG frame (FF D8) or microphone PCM (Float32) ---
@@ -539,7 +593,37 @@ async def websocket_endpoint(websocket: WebSocket):
                 if mtype == "camera_source":
                     source_type = obj.get("source")
                     camera_url = obj.get("url")
-                    # Stop any existing camera loop.
+                    network_source = source_type in ("ip", "onvif", "rtsp")
+                    safe_url = None
+
+                    # Hosted servers never fetch camera URLs.  Network sources
+                    # belong to the local Bridge; developers can opt in.
+                    if network_source:
+                        if not settings.allow_server_camera:
+                            await send_json(
+                                websocket,
+                                {"type": "error", "detail": "bridge_required"},
+                            )
+                            continue
+                        if not camera_url:
+                            await send_json(websocket, {"type": "error", "detail": "missing_url"})
+                            continue
+                        try:
+                            safe_url = validate_fetch_url(camera_url, resolve=True)
+                        except URLValidationError as exc:
+                            logger.warning(
+                                "[CAMERA] Rejected source URL %s (%s)",
+                                redact_url(str(camera_url)),
+                                exc.reason,
+                            )
+                            await send_json(
+                                websocket,
+                                {"type": "error", "detail": exc.reason},
+                            )
+                            continue
+
+                    # Stop any existing camera loop only after the new source
+                    # has passed validation.
                     if ip_camera_stop is not None:
                         ip_camera_stop.set()
                     if ip_camera_task is not None:
@@ -553,41 +637,41 @@ async def websocket_endpoint(websocket: WebSocket):
                         rtsp_task = None
                     rtsp_stop = None
                     camera_source = None
-                    if source_type == "ip" and camera_url:
+                    if source_type == "ip" and safe_url:
                         ip_camera_stop = asyncio.Event()
-                        camera_source = {"type": "ip", "url": camera_url}
+                        camera_source = {"type": "ip", "url": safe_url}
                         ip_camera_task = asyncio.create_task(
                             _ip_camera_loop(
-                                websocket, quantizer, camera_url,
+                                websocket, quantizer, safe_url,
                                 server_jpeg_quality, audio_gain, ip_camera_stop,
                                 lambda: latest_audio,
                             )
                         )
-                        logger.info("[CAMERA] Switched to IP camera: %s", camera_url)
+                        logger.info("[CAMERA] Switched to IP camera: %s", redact_url(safe_url))
                         await send_json(websocket, {"type": "status", "detail": "camera_connected"})
-                    elif source_type == "rtsp" and camera_url:
+                    elif source_type == "rtsp" and safe_url:
                         rtsp_stop = asyncio.Event()
-                        camera_source = {"type": "rtsp", "url": camera_url}
+                        camera_source = {"type": "rtsp", "url": safe_url}
                         rtsp_task = asyncio.create_task(
                             _rtsp_stream_loop(
-                                websocket, quantizer, camera_url,
+                                websocket, quantizer, safe_url,
                                 server_jpeg_quality, rtsp_stop,
                                 lambda: latest_audio, audio_gain,
                             )
                         )
-                        logger.info("[CAMERA] Switched to RTSP stream: %s", camera_url)
+                        logger.info("[CAMERA] Switched to RTSP stream: %s", redact_url(safe_url))
                         await send_json(websocket, {"type": "status", "detail": "camera_connected"})
-                    elif source_type == "onvif" and camera_url:
+                    elif source_type == "onvif" and safe_url:
                         rtsp_stop = asyncio.Event()
-                        camera_source = {"type": "onvif", "url": camera_url}
+                        camera_source = {"type": "onvif", "url": safe_url}
                         rtsp_task = asyncio.create_task(
                             _rtsp_stream_loop(
-                                websocket, quantizer, camera_url,
+                                websocket, quantizer, safe_url,
                                 server_jpeg_quality, rtsp_stop,
                                 lambda: latest_audio, audio_gain,
                             )
                         )
-                        logger.info("[CAMERA] Switched to ONVIF stream: %s", camera_url)
+                        logger.info("[CAMERA] Switched to ONVIF stream: %s", redact_url(safe_url))
                         await send_json(websocket, {"type": "status", "detail": "camera_connected"})
                     elif source_type == "local":
                         camera_source = None
@@ -677,4 +761,4 @@ if TINYTUA_AVAILABLE:
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("server:app", host="0.0.0.0", port=8000)
+    uvicorn.run("server:app", host="0.0.0.0", port=settings.port)

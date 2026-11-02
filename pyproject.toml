@@ -19,7 +19,7 @@ dependencies = [
     "scipy>=1.16.0",
     "pyaudio>=0.2.14",
     "sounddevice>=0.4.6",
-    "tinytuya>=5.3.0",
+    "tinytuya>=1.20.0",
 ]
 
 [project.optional-dependencies]
@@ -35,3 +35,15 @@ start = "server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test"
+python_functions = "test_"
+# Starlette 0.27 (pinned by FastAPI 0.104) passes the deprecated httpx
+# ``app=`` shortcut.  This is a third-party compatibility warning; the test
+# client still uses the supported ASGI transport internally.
+filterwarnings = [
+    "ignore:The 'app' shortcut is now deprecated:DeprecationWarning:httpx._client",
+]

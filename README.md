@@ -87,5 +87,5 @@ Notes:
 
 ## Deploy (Railway)
 
-See `RAILWAY_DEPLOY.md`. The Docker image builds from `requirements.txt`;
+See `docs/RAILWAY_DEPLOY.md`. The Docker image builds from `requirements.txt`;
 the dev/test extras live in `requirements-dev.txt`.

@@ -7,7 +7,7 @@
     "dev": "concurrently -k -n BACKEND,FRONTEND -c cyan,magenta \"npm:backend\" \"npm:frontend\"",
     "backend": ".venv\\Scripts\\python.exe -m uvicorn server:app --reload --port 8001",
     "frontend": "npx --yes live-server --port=5500 --quiet frontend/",
-    "start": ".venv/Scripts/python.exe -m uvicorn server:app --port 8000",
+    "start": ".venv/Scripts/python.exe -m uvicorn server:app --port 8001",
     "test": ".venv/Scripts/python.exe -m pytest tests -q"
   },
   "devDependencies": {
