@@ -720,10 +720,11 @@ async def _tuya_scan(timeout: float = 5.0) -> List[dict]:
 class TuyaDriver(LightDriver):
     """Tuya local light driver — requires Bridge-stored local key."""
 
-    def __init__(self, bridge) -> None:
+    def __init__(self, bridge, credential_store=None) -> None:
         self.bridge = bridge
         self._token: str | None = None
         self._key: str | None = None  # stored Bridge-side only
+        self._store = credential_store
         self._devices: dict[str, dict] = {}
         self._latency_ms: float = 0.0
         self._timeout: float = 2.0
@@ -736,30 +737,54 @@ class TuyaDriver(LightDriver):
     async def pair(self, credentials: dict | None = None) -> str:
         """Store a Tuya local key (obtained via Tuya cloud OAuth).
 
-        ``credentials`` should contain a ``local_key`` string.  The key is
+        ``credentials`` may contain ``local_key`` and ``device_id``.  The key is
         persisted Bridge-side only and never logged or sent to the browser.
         """
         key = credentials.get("local_key") if credentials else None
         if key:
-            self._key = key
+            device_id = str(credentials.get("device_id") or "").strip()
+            if device_id and self._store is not None:
+                self._store.set(device_id, key)
+            else:
+                self._key = key
         # Generate a per-origin token for Bridge internal use
         import secrets
         self._token = secrets.token_urlsafe(24)
         return self._token
 
+    def _key_for(self, device_id: str | None) -> str | None:
+        if self._store is not None and device_id:
+            stored = self._store.get(str(device_id))
+            if stored:
+                return stored
+        return self._key
+
+    def clear_credentials(self, device_id: str | None = None) -> None:
+        """Remove Bridge-stored key material for one device or all devices."""
+        self._key = None
+        if self._store is None:
+            return
+        if device_id:
+            self._store.delete(device_id)
+        else:
+            self._store.clear()
+
     async def set_state(self, state: dict) -> None:
         """Send a colour/brightness command to a Tuya light via tinytuya.
 
-        Requires a Bridge-stored local key from :meth:`pair`.  The key is only
-        passed to ``tinytuya.BulbDevice`` and is never logged or returned.  The
-        command blocks on the device ack, so it runs in a worker thread and the
-        measured round-trip is recorded for diagnostics.
+        Requires a Bridge-stored local key from :meth:`pair` or the onboarding
+        endpoint.  The key is only passed to ``tinytuya.BulbDevice`` and is
+        never logged or returned.  The command blocks on the device ack, so it
+        runs in a worker thread and the measured round-trip is recorded for
+        diagnostics.
         """
         dev_id = state.get("device_id")
         device = self._devices.get(dev_id)
         if device is None:
             raise LightDriverError("unknown_device")
-        if not self._key:
+        gateway_id = str(device.get("device_id") or dev_id)
+        local_key = self._key_for(gateway_id)
+        if not local_key:
             raise LightDriverError("needs_credentials")
         try:
             import tinytuya
@@ -771,14 +796,13 @@ class TuyaDriver(LightDriver):
         b = min(255, max(0, int(state.get("b", 0))))
         brightness = min(100, max(0, int(state.get("brightness", 100))))
         host = device.get("ip") or _parse_device_address(device.get("address", ""), 6668)[0]
-        gateway_id = str(device.get("device_id") or dev_id)
         try:
             version = float(device.get("version") or 3.3)
         except (TypeError, ValueError):
             version = 3.3
 
         def _send() -> tuple[dict, dict | None, float]:
-            bulb = tinytuya.BulbDevice(gateway_id, host, self._key)
+            bulb = tinytuya.BulbDevice(gateway_id, host, local_key)
             try:
                 bulb.set_version(version)
                 bulb.set_socketTimeout(self._timeout)
@@ -802,12 +826,25 @@ class TuyaDriver(LightDriver):
                 "supports_transition": True, "max_brightness": 100,
                 "max_transition": 300, "rate_mode": "slow", "max_rate_hz": 1.0}
 
+    def _public_device(self, device: dict) -> dict:
+        gateway_id = str(device.get("device_id") or device.get("id"))
+        ready = bool(self._key_for(gateway_id))
+        return {
+            "id": device.get("id"),
+            "name": device.get("name"),
+            "ready": ready,
+            "needs_credentials": not ready,
+            "state": "ready" if ready else "needs_credentials",
+        }
+
     def status(self) -> dict:
-        devices = list(self._devices.values())
+        devices = [self._public_device(d) for d in self._devices.values()]
+        ready = any(device["ready"] for device in devices)
         latency = self.latency_diagnostics()
-        return {"online": bool(self._devices),
+        return {"online": bool(devices),
+                "state": "ready" if ready else "needs_credentials",
                 "latencyMs": latency,
-                "devices": [{"id": d["id"], "name": d["name"], "ready": d.get("ready", False), "needs_credentials": d.get("needs_credentials", False)} for d in devices]}
+                "devices": devices}
 
 
 #
@@ -1504,22 +1541,27 @@ class LightStreamController:
 LIGHT_METHODS = ["wiz", "tuya", "lifx", "govee", "matter", "hue", "home_assistant"]
 
 
-def register_light_drivers(app: FastAPI, bridge, drivers: dict[str, LightDriver] | None = None) -> None:
+def register_light_drivers(app: FastAPI, bridge, drivers: dict[str, LightDriver] | None = None,
+                           tuya_store=None) -> None:
     """Register light-control WS endpoint and diagnostics.
 
     ``drivers`` is injectable so tests can exercise the real WS path with a
     fake driver; production callers get the built-in driver set.
+    ``tuya_store`` is the Bridge-side credential store shared with the Tuya
+    onboarding HTTP endpoints.
     """
 
     driver_instances: dict[str, LightDriver] = dict(drivers) if drivers is not None else {
         "wiz": WizDriver(bridge),
-        "tuya": TuyaDriver(bridge),
+        "tuya": TuyaDriver(bridge, credential_store=tuya_store),
         "lifx": LifxDriver(bridge),
         "govee": GoveeDriver(bridge),
         "matter": MatterDriver(bridge),
         "hue": HueDriver(bridge),
         "home_assistant": HomeAssistantDriver(bridge),
     }
+    app.state.light_drivers = driver_instances
+    app.state.tuya_store = tuya_store
 
     @app.websocket("/lights/ws")
     async def lights_socket(websocket: WebSocket):

@@ -38,3 +38,8 @@ Thumbs.db
 /report_test.txt
 /test-results/
 
+# Bridge credential state (local keys stay on the Bridge machine)
+/tuya_credentials.json
+**/tuya_credentials.json
+**/tuya_credentials.json.tmp
+

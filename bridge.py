@@ -52,6 +52,7 @@ from security import (
     origin_allowed,
     pairing_store,
 )
+from tuya_onboarding import TuyaCloudClient, TuyaCloudError, TuyaCredentialStore
 
 logger = logging.getLogger("live_feed_quantizer.bridge")
 
@@ -63,6 +64,7 @@ STREAM_ERROR_BACKOFF = 0.1
 pair_limiter = RateLimiter(limit=12, window=60)
 bridge_http_limiter = RateLimiter(limit=120, window=60)
 bridge_ws_limiter = RateLimiter(limit=settings.ws_message_rate_limit, window=60)
+tuya_onboard_limiter = RateLimiter(limit=6, window=60)
 
 
 def _origin_ok(headers) -> bool:
@@ -71,6 +73,23 @@ def _origin_ok(headers) -> bool:
 
 def _host_ok(headers) -> bool:
     return bridge_host_allowed(headers.get("host"), settings.bridge_allowed_hosts)
+
+
+def _paired_request(request: Request) -> bool:
+    """Require the per-origin pairing token on credential endpoints."""
+    return pairing_store.verify(
+        request.headers.get("origin"),
+        request.headers.get("x-bridge-token"),
+    )
+
+
+TUYA_ONBOARDING_STEPS = [
+    "Create a Tuya IoT Cloud project at https://iot.tuya.com/ (Cloud > Development > Create Cloud Project).",
+    "Open Devices > Link Tuya App Account and scan the QR code with the Smart Life app so the device appears in the project.",
+    "Copy the project Access ID and Access Secret (both stay in the Bridge; the secret is not stored).",
+    "Select the Tuya device from the LAN scan, then submit its device id once. The Bridge fetches the local key and stores it Bridge-side.",
+    "The browser only ever sees ready / needs_credentials; the key is never returned or logged.",
+]
 
 
 def _json(payload: dict, status_code: int = 200) -> JSONResponse:
@@ -121,10 +140,17 @@ async def _stream_frames(ws: WebSocket, subscription: Subscription) -> None:
 def create_app(
     gateway: FrameGateway | None = None,
     light_drivers: dict | None = None,
+    tuya_store: TuyaCredentialStore | None = None,
+    tuya_cloud_factory=None,
 ) -> FastAPI:
-    """Build the Bridge app.  Tests may inject a gateway and/or light drivers."""
+    """Build the Bridge app.  Tests may inject a gateway, light drivers,
+    credential store, and fake Tuya cloud client."""
 
     shared_gateway = gateway or FrameGateway()
+    credential_store = (
+        tuya_store if tuya_store is not None else TuyaCredentialStore()
+    )
+    cloud_factory = tuya_cloud_factory or TuyaCloudClient
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -141,11 +167,12 @@ def create_app(
         allow_origins=[o for o in dict.fromkeys(settings.bridge_allowed_origins) if o],
         allow_credentials=False,
         allow_methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["Content-Type"],
+        allow_headers=["Content-Type", "X-Bridge-Token"],
         max_age=600,
     )
 
-    register_light_drivers(app, shared_gateway, drivers=light_drivers)
+    register_light_drivers(app, shared_gateway, drivers=light_drivers,
+                           tuya_store=credential_store)
 
     @app.middleware("http")
     async def enforce_loopback_host(request: Request, call_next):
@@ -200,6 +227,107 @@ def create_app(
                 },
             }
         )
+
+    def _tuya_onboarding_state() -> dict:
+        driver = app.state.light_drivers.get("tuya")
+        devices: list[dict] = []
+        if driver is not None:
+            try:
+                devices = list(driver.status().get("devices", []))
+            except Exception:
+                devices = []
+        return {
+            "state": "ready" if len(credential_store) else "needs_credentials",
+            "configured": len(credential_store),
+            "devices": devices,
+            "steps": list(TUYA_ONBOARDING_STEPS),
+            "regions": sorted(TuyaCloudClient.REGIONS),
+        }
+
+    @app.get("/lights/tuya/onboarding")
+    async def tuya_onboarding_status(request: Request):
+        if not _paired_request(request):
+            return _json({"error": "pairing_required"}, status_code=403)
+        ip = request.client.host if request.client else "unknown"
+        if not tuya_onboard_limiter.allow(ip) or not bridge_http_limiter.allow(ip):
+            return _json({"error": "rate_limited"}, status_code=429)
+        return _json(_tuya_onboarding_state())
+
+    @app.post("/lights/tuya/onboarding")
+    async def tuya_onboarding_submit(request: Request):
+        if not _paired_request(request):
+            return _json({"error": "pairing_required"}, status_code=403)
+        ip = request.client.host if request.client else "unknown"
+        if not tuya_onboard_limiter.allow(ip) or not bridge_http_limiter.allow(ip):
+            return _json({"error": "rate_limited"}, status_code=429)
+        try:
+            if int(request.headers.get("content-length") or 0) > 4096:
+                return _json({"error": "message_too_large"}, status_code=413)
+            payload = await request.json()
+        except (TypeError, ValueError):
+            return _json({"error": "bad_json"}, status_code=400)
+        if not isinstance(payload, dict):
+            return _json({"error": "bad_json"}, status_code=400)
+
+        client_id = str(payload.get("client_id") or "").strip()
+        client_secret = str(payload.get("client_secret") or "").strip()
+        device_id = str(payload.get("device_id") or "").strip()
+        region = str(payload.get("region") or "eu").strip().lower()
+        if not client_id or not client_secret or not device_id:
+            return _json({"error": "missing_fields",
+                          "fields": ["client_id", "client_secret", "device_id"]},
+                         status_code=400)
+        if max(len(client_id), len(client_secret), len(device_id)) > 512:
+            return _json({"error": "field_too_long"}, status_code=400)
+        if region not in TuyaCloudClient.REGIONS:
+            return _json({"error": "invalid_region"}, status_code=400)
+
+        try:
+            cloud = cloud_factory(client_id, client_secret, region)
+            name, local_key = await asyncio.to_thread(cloud.fetch_local_key, device_id)
+        except TuyaCloudError as exc:
+            # Only the safe error code is surfaced; the secret and provider
+            # message never reach the browser or the log.
+            logger.warning("[TUYA] Onboarding failed for device %s: %s",
+                           device_id, exc.code)
+            return _json({"error": exc.code, "state": "needs_credentials"},
+                         status_code=400)
+        except ValueError:
+            return _json({"error": "invalid_credentials"}, status_code=400)
+        except Exception:
+            logger.warning("[TUYA] Onboarding failed for device %s: cloud_error",
+                           device_id)
+            return _json({"error": "cloud_error", "state": "needs_credentials"},
+                         status_code=400)
+
+        credential_store.set(device_id, local_key)
+        logger.info("[TUYA] Stored local key for device %s (redacted)", device_id)
+        state = _tuya_onboarding_state()
+        state["device"] = {
+            "id": device_id,
+            "name": name,
+            "ready": True,
+            "needs_credentials": False,
+            "state": "ready",
+        }
+        return _json(state)
+
+    @app.delete("/lights/tuya/onboarding")
+    async def tuya_onboarding_clear(request: Request):
+        if not _paired_request(request):
+            return _json({"error": "pairing_required"}, status_code=403)
+        ip = request.client.host if request.client else "unknown"
+        if not tuya_onboard_limiter.allow(ip) or not bridge_http_limiter.allow(ip):
+            return _json({"error": "rate_limited"}, status_code=429)
+        device_id = request.query_params.get("device_id") or None
+        driver = app.state.light_drivers.get("tuya")
+        if driver is not None and hasattr(driver, "clear_credentials"):
+            driver.clear_credentials(device_id)
+        elif device_id:
+            credential_store.delete(device_id)
+        else:
+            credential_store.clear()
+        return _json(_tuya_onboarding_state())
 
     @app.websocket("/ws")
     async def bridge_socket(websocket: WebSocket):
