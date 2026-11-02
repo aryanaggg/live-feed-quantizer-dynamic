@@ -57,6 +57,47 @@ def test_source_abstraction_is_present():
         assert symbol in text, f"missing client architecture symbol: {symbol}"
 
 
+def _remote_section() -> str:
+    text = _index_text()
+    start = text.index("/* ---------- Tier 0: remote devices over WebRTC ---------- */")
+    end = text.index("/* ---------- WebGL:")
+    return text[start:end]
+
+
+def test_remote_tracks_use_the_same_video_and_audio_pipeline():
+    section = _remote_section()
+
+    # Host: an incoming peer track becomes one MediaStream that feeds the same
+    # FrameSource / AudioSource abstractions as local devices.
+    assert "pc.ontrack = event =>" in section
+    assert "entry.stream = stream;" in section
+    assert "new RemoteDeviceSource(src.id, src.peerId, entry.stream" in section
+    assert "new RemoteAudioSource('remote-audio-' + peerId, entry.stream)" in section
+    assert "videoSource = source;" in section
+    assert "audioSource = source;" in section
+    assert "this.ctx.createMediaStreamSource(this.stream).connect(this.analyser);" in section
+
+    # Guest: both camera and microphone tracks are offered to the host.
+    assert "guest.stream.getTracks().forEach(track => pc.addTrack(track, guest.stream));" in section
+    assert "audio: true" in section
+
+    # ICE configuration comes from the signaling server, so STUN/TURN are set
+    # by the deployment (env) rather than hardcoded in the browser.
+    assert "remote.iceServers = data.iceServers || [];" in section
+    assert "new RTCPeerConnection({ iceServers: remote.iceServers })" in section
+
+
+def test_remote_signaling_has_no_bridge_dependency():
+    section = _remote_section()
+    assert "bridgeURL" not in section
+    assert "BRIDGE_PORTS" not in section
+    assert "127.0.0.1" not in section
+    # Signaling is resolved from the hosted backend (query override, https
+    # origin, or the local dev server), never through the loopback Bridge.
+    assert "fetch(`${resolveBackend()}${path}`" in section
+    assert "async function signalRequest(path, options = {})" in section
+
+
 def test_no_server_palette_or_wildcard_cors_in_client():
     text = _index_text()
     # The client must never send frames to the server for quantization.
