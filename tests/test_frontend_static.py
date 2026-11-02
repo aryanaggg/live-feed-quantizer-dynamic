@@ -81,6 +81,10 @@ def test_remote_tracks_use_the_same_video_and_audio_pipeline():
     assert "guest.stream.getTracks().forEach(track => pc.addTrack(track, guest.stream));" in section
     assert "audio: true" in section
 
+    # A remote peer leaving must close its AudioContext, not just the video.
+    assert "remoteAudioPeerId === peerId && audioSource instanceof RemoteAudioSource" in section
+    assert "audioSource.stop();" in section
+
     # ICE configuration comes from the signaling server, so STUN/TURN are set
     # by the deployment (env) rather than hardcoded in the browser.
     assert "remote.iceServers = data.iceServers || [];" in section

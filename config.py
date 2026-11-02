@@ -91,6 +91,7 @@ class Settings:
         # WebRTC signalling.
         self.signaling_room_ttl = _env_int("LFQ_ROOM_TTL", 600)
         self.signaling_room_grace = _env_int("LFQ_ROOM_GRACE", 60)
+        self.signaling_join_timeout = _env_int("LFQ_ROOM_JOIN_TIMEOUT", 30)
         self.signaling_max_guests = _env_int("LFQ_ROOM_MAX_GUESTS", 6)
         self.signaling_max_rooms_per_ip = _env_int("LFQ_ROOM_MAX_PER_IP", 10)
 

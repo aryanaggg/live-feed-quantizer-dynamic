@@ -9,8 +9,15 @@ Rooms are deliberately small and short lived:
   convenience for humans and is rate limited,
 * each join returns a one-time peer token; reconnecting with the same token is
   allowed for a short grace period after a drop,
-* the room expires after ``settings.signaling_room_ttl`` seconds,
+* the room expires after ``settings.signaling_room_ttl`` seconds and every
+  open socket is closed when that happens,
+* a guest does not consume a room slot until it sends a valid offer; pending
+  guests are released after ``settings.signaling_join_timeout`` seconds,
 * every message is size/type/rate limited.
+
+Deployment note: the registry is process-local. Run exactly one signalling
+worker, or put a shared registry behind sticky routing. Multiple workers do
+not share rooms.
 """
 
 from __future__ import annotations
@@ -39,6 +46,8 @@ CODE_LENGTH = 6
 TOKEN_BYTES = 24
 MAX_MESSAGE_BYTES = 64 * 1024
 ALLOWED_RELAY_TYPES = {"offer", "answer", "ice", "bye"}
+CLOSE_ROOM_EXPIRED = 4002
+CLOSE_JOIN_TIMEOUT = 4008
 
 
 def _hash(token: str) -> str:
@@ -84,6 +93,7 @@ class Peer:
     id: str
     token_hash: str
     connected: bool = False
+    active: bool = False
     ws: Any = None
     joined_at: float = field(default_factory=time.time)
     disconnected_at: float = 0.0
@@ -102,6 +112,12 @@ class Room:
     def expired(self, now: float | None = None) -> bool:
         return (now or time.time()) >= self.expires_at
 
+    def active_peers(self) -> list[Peer]:
+        return [peer for peer in self.peers.values() if peer.active]
+
+    def pending_peers(self) -> list[Peer]:
+        return [peer for peer in self.peers.values() if not peer.active]
+
 
 class RoomError(ValueError):
     def __init__(self, reason: str) -> None:
@@ -110,15 +126,28 @@ class RoomError(ValueError):
 
 
 class RoomRegistry:
-    """In-memory room registry (single process; documented in README)."""
+    """In-memory room registry.
+
+    Process-local by design: run one signalling worker or use sticky routing
+    with shared state.  Rooms in different workers are invisible to each other.
+    """
 
     def __init__(self, ttl: int | None = None, grace: int | None = None,
                  max_guests: int | None = None, max_rooms_per_ip: int | None = None,
+                 join_timeout: float | None = None, max_pending: int | None = None,
                  clock=time.time) -> None:
         self.ttl = settings.signaling_room_ttl if ttl is None else ttl
         self.grace = settings.signaling_room_grace if grace is None else grace
         self.max_guests = settings.signaling_max_guests if max_guests is None else max_guests
         self.max_rooms_per_ip = settings.signaling_max_rooms_per_ip if max_rooms_per_ip is None else max_rooms_per_ip
+        self.join_timeout = (
+            settings.signaling_join_timeout if join_timeout is None else join_timeout
+        )
+        # Pending joins have their own cap so a burst of HTTP joins cannot
+        # reserve an unbounded number of tokens while waiting for an offer.
+        self.max_pending = (
+            max(1, self.max_guests * 2) if max_pending is None else max_pending
+        )
         self.clock = clock
         self._rooms: dict[str, Room] = {}
         self._by_code: dict[str, str] = {}
@@ -130,6 +159,14 @@ class RoomRegistry:
         for room_id, room in list(self._rooms.items()):
             if room.expired(now):
                 self._drop(room_id)
+            else:
+                self._prune_pending(room, now)
+
+    def _prune_pending(self, room: Room, now: float | None = None) -> None:
+        now = self.clock() if now is None else now
+        for peer in list(room.peers.values()):
+            if not peer.active and now - peer.joined_at > self.join_timeout:
+                room.peers.pop(peer.id, None)
 
     def _drop(self, room_id: str) -> None:
         room = self._rooms.pop(room_id, None)
@@ -186,12 +223,31 @@ class RoomRegistry:
         room = self.get_by_code(code)
         if room is None:
             raise RoomError("room_not_found")
-        if len(room.peers) >= self.max_guests:
+        if len(room.active_peers()) >= self.max_guests:
+            raise RoomError("room_full")
+        if len(room.pending_peers()) >= self.max_pending:
             raise RoomError("room_full")
         token = secrets.token_urlsafe(TOKEN_BYTES)
-        peer = Peer(id=secrets.token_urlsafe(9), token_hash=_hash(token))
+        peer = Peer(
+            id=secrets.token_urlsafe(9),
+            token_hash=_hash(token),
+            joined_at=self.clock(),
+        )
         room.peers[peer.id] = peer
         return room, peer, token
+
+    def activate_peer(self, room: Room, peer: Peer) -> None:
+        """Consume a guest slot once the peer has sent a valid offer."""
+        now = self.clock()
+        self._prune_pending(room, now)
+        if room.peers.get(peer.id) is not peer:
+            raise RoomError("join_expired")
+        if peer.active:
+            return
+        if len(room.active_peers()) >= self.max_guests:
+            raise RoomError("room_full")
+        peer.active = True
+        peer.joined_at = now
 
     def authenticate_host(self, room_id: str, token: str | None) -> Room:
         room = self.get(room_id)
@@ -231,7 +287,8 @@ class RoomRegistry:
             "id": room.id,
             "code": room.code,
             "expiresAt": int(room.expires_at * 1000),
-            "guests": len(room.peers),
+            "guests": len(room.active_peers()),
+            "pending": len(room.pending_peers()),
             "hostConnected": room.host_ws is not None,
         }
 
@@ -351,7 +408,9 @@ async def signal_socket(websocket: WebSocket):
             room, peer = registry.authenticate_peer(room_id, token)
             registry.mark_connected(room, peer, websocket)
             await _send(websocket, {"type": "ready", "role": "guest", "peerId": peer.id, "room": registry.room_info(room)})
-            if room.host_ws is not None:
+            if peer.active and room.host_ws is not None:
+                # A reconnecting active guest must be re-announced; the host
+                # removed it when the previous socket closed.
                 await _send(room.host_ws, {"type": "peer_joined", "peerId": peer.id})
     except RoomError as exc:
         await _send(websocket, {"type": "error", "detail": exc.reason})
@@ -364,9 +423,44 @@ async def signal_socket(websocket: WebSocket):
         # authenticate_peer already located it; re-find for cleanup.
         peer = next((p for p in room.peers.values() if p.ws is websocket), None)
 
+    pending_deadline = None
+    if peer is not None and not peer.active:
+        pending_deadline = peer.joined_at + registry.join_timeout
+
     try:
         while True:
-            message = await websocket.receive_text()
+            now = registry.clock()
+            room_remaining = room.expires_at - now
+            if room_remaining <= 0:
+                await _send(websocket, {"type": "error", "detail": "room_expired"})
+                await websocket.close(code=CLOSE_ROOM_EXPIRED)
+                break
+
+            timeout = room_remaining
+            if pending_deadline is not None and not peer.active:
+                timeout = min(timeout, max(0.0, pending_deadline - now))
+            try:
+                message = await asyncio.wait_for(
+                    websocket.receive_text(), timeout=timeout
+                )
+            except asyncio.TimeoutError:
+                now = registry.clock()
+                if room.expired(now):
+                    # A pending guest and an active room both lose the socket
+                    # when the room TTL elapses.
+                    await _send(websocket, {"type": "error", "detail": "room_expired"})
+                    await websocket.close(code=CLOSE_ROOM_EXPIRED)
+                elif peer is not None and not peer.active:
+                    # No offer arrived in time: release the pending slot.
+                    await _send(websocket, {"type": "error", "detail": "join_timeout"})
+                    await websocket.close(code=CLOSE_JOIN_TIMEOUT)
+                    registry.remove_peer(room, peer)
+                    peer = None
+                else:
+                    # wait_for can wake a fraction early; re-check expiry.
+                    continue
+                break
+
             if len(message.encode("utf-8")) > MAX_MESSAGE_BYTES:
                 await _send(websocket, {"type": "error", "detail": "message_too_large"})
                 continue
@@ -385,15 +479,36 @@ async def signal_socket(websocket: WebSocket):
                 await _send(websocket, {"type": "error", "detail": "unsupported_type"})
                 continue
 
+            if role == "guest" and peer is not None:
+                if mtype == "offer" and not peer.active:
+                    try:
+                        registry.activate_peer(room, peer)
+                    except RoomError as exc:
+                        await _send(websocket, {"type": "error", "detail": exc.reason})
+                        await websocket.close(code=1008)
+                        break
+                    pending_deadline = None
+                    if room.host_ws is not None:
+                        await _send(room.host_ws, {"type": "peer_joined", "peerId": peer.id})
+                elif mtype == "bye" and not peer.active:
+                    # A pending guest that leaves frees its slot immediately.
+                    registry.remove_peer(room, peer)
+                    peer = None
+                    break
+
             if role == "host":
                 target = obj.get("to")
                 out = {"type": mtype, "from": "host", "payload": obj.get("payload")}
                 if target:
                     target_peer = room.peers.get(str(target))
-                    if target_peer and target_peer.ws is not None:
+                    if (
+                        target_peer is not None
+                        and target_peer.active
+                        and target_peer.ws is not None
+                    ):
                         await _send(target_peer.ws, out)
                 else:
-                    for p in list(room.peers.values()):
+                    for p in room.active_peers():
                         if p.ws is not None:
                             await _send(p.ws, out)
             else:
@@ -411,7 +526,10 @@ async def signal_socket(websocket: WebSocket):
             if room.host_ws is websocket:
                 room.host_ws = None
         elif peer is not None:
-            registry.mark_disconnected(room, peer)
-            if room.host_ws is not None:
-                await _send(room.host_ws, {"type": "peer_left", "peerId": peer.id})
+            if peer.active:
+                registry.mark_disconnected(room, peer)
+                if room.host_ws is not None:
+                    await _send(room.host_ws, {"type": "peer_left", "peerId": peer.id})
+            else:
+                registry.remove_peer(room, peer)
         logger.info("[SIGNAL] %s disconnected (room %s)", role, room.id[:8] if room else "?")

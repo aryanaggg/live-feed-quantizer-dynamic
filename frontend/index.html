@@ -2959,6 +2959,14 @@ function dropRemotePeer(peerId, reason) {
       videoSource.stop(); videoSource = null;
       if (run) status('Remote device ' + reason, true);
     }
+    if (remoteAudioPeerId === peerId && audioSource instanceof RemoteAudioSource) {
+      // RemoteAudioSource.stop() closes its AudioContext. Without this the
+      // analyser would keep running against ended tracks after the peer left.
+      audioSource.stop();
+      audioSource = null;
+      remoteAudioPeerId = null;
+      if (run) status('Remote audio ' + reason, true);
+    }
     remote.devices.delete(peerId);
   }
   remoteChanged();

@@ -3,6 +3,7 @@ import time
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 import signaling
 from config import settings
@@ -48,11 +49,15 @@ def test_create_join_and_status():
     assert joined.status_code == 200, joined.text
     payload = joined.json()
     assert payload["peerToken"]
-    assert payload["room"]["guests"] == 1
+    # A join is pending until the guest sends an offer; it does not consume a
+    # guest slot yet.
+    assert payload["room"]["guests"] == 0
+    assert payload["room"]["pending"] == 1
 
     status = client.get(f"/signal/rooms/{code}", headers={"Origin": ALLOWED_ORIGIN})
     assert status.status_code == 200
-    assert status.json()["room"]["guests"] == 1
+    assert status.json()["room"]["guests"] == 0
+    assert status.json()["room"]["pending"] == 1
 
 
 def test_join_rejects_unknown_code():
@@ -92,10 +97,49 @@ def test_registry_expires_rooms():
 def test_registry_rejects_room_when_full():
     reg = signaling.RoomRegistry(ttl=60, max_guests=1)
     room, _ = reg.create("1.2.3.4")
-    reg.join(room.code, "1.2.3.5")
+    _, peer, _ = reg.join(room.code, "1.2.3.5")
+    reg.activate_peer(room, peer)
     with pytest.raises(signaling.RoomError) as exc:
         reg.join(room.code, "1.2.3.6")
     assert exc.value.reason == "room_full"
+
+
+def test_pending_guest_does_not_consume_a_slot_until_offer():
+    now = [1000.0]
+    reg = signaling.RoomRegistry(
+        ttl=60, max_guests=1, join_timeout=10, clock=lambda: now[0]
+    )
+    room, _ = reg.create("1.2.3.4")
+    _, first, _ = reg.join(room.code, "1.2.3.5")
+    _, second, _ = reg.join(room.code, "1.2.3.6")
+
+    info = reg.room_info(room)
+    assert info["guests"] == 0
+    assert info["pending"] == 2
+
+    reg.activate_peer(room, first)
+    assert reg.room_info(room)["guests"] == 1
+    with pytest.raises(signaling.RoomError) as exc:
+        reg.activate_peer(room, second)
+    assert exc.value.reason == "room_full"
+
+
+def test_pending_guest_times_out_and_frees_capacity():
+    now = [1000.0]
+    reg = signaling.RoomRegistry(
+        ttl=60, max_guests=1, join_timeout=10, clock=lambda: now[0]
+    )
+    room, _ = reg.create("1.2.3.4")
+    reg.join(room.code, "1.2.3.5")
+    assert reg.room_info(room)["pending"] == 1
+
+    now[0] += 11
+    reg.prune()
+    assert reg.room_info(room)["pending"] == 0
+
+    _, peer, _ = reg.join(room.code, "1.2.3.6")
+    reg.activate_peer(room, peer)
+    assert reg.room_info(room)["guests"] == 1
 
 
 def test_peer_token_is_one_time_but_reconnect_grace_works():
@@ -135,16 +179,18 @@ def test_host_and_guest_relay_and_reconnect():
         try:
             guest_ready = json.loads(guest.receive_text())
             assert guest_ready["type"] == "ready"
+
+            # The slot is only consumed when the guest sends an offer, so the
+            # host is not told about the peer yet.
+            guest.send_text(json.dumps({"type": "offer", "payload": {"sdp": "guest"}}))
             joined_msg = json.loads(host.receive_text())
             assert joined_msg == {"type": "peer_joined", "peerId": peer_id}
+            guest_offer = json.loads(host.receive_text())
+            assert guest_offer["type"] == "offer" and guest_offer["from"] == peer_id
 
-            host.send_text(json.dumps({"type": "offer", "to": peer_id, "payload": {"sdp": "x"}}))
-            offer = json.loads(guest.receive_text())
-            assert offer["type"] == "offer" and offer["from"] == "host"
-
-            guest.send_text(json.dumps({"type": "answer", "payload": {"sdp": "y"}}))
-            answer = json.loads(host.receive_text())
-            assert answer["type"] == "answer" and answer["from"] == peer_id
+            host.send_text(json.dumps({"type": "answer", "to": peer_id, "payload": {"sdp": "x"}}))
+            answer = json.loads(guest.receive_text())
+            assert answer["type"] == "answer" and answer["from"] == "host"
         finally:
             guest.__exit__(None, None, None)
 
@@ -152,14 +198,18 @@ def test_host_and_guest_relay_and_reconnect():
         assert left == {"type": "peer_left", "peerId": peer_id}
 
         # A dropped guest may reconnect with the same one-time peer token
-        # inside the grace window.
+        # inside the grace window. It is already active, so the host is
+        # re-announced as soon as the socket is ready.
         guest2 = _ws(room.id, "guest", peer_token)
         guest2.__enter__()
         try:
             again = json.loads(guest2.receive_text())
             assert again["type"] == "ready"
             joined_again = json.loads(host.receive_text())
-            assert joined_again["type"] == "peer_joined"
+            assert joined_again == {"type": "peer_joined", "peerId": peer_id}
+            guest2.send_text(json.dumps({"type": "offer", "payload": {"sdp": "again"}}))
+            reoffer = json.loads(host.receive_text())
+            assert reoffer["type"] == "offer" and reoffer["from"] == peer_id
         finally:
             guest2.__exit__(None, None, None)
     finally:
@@ -258,13 +308,14 @@ def test_room_ttl_is_enforced_through_http(monkeypatch):
 
 
 def test_http_room_full_returns_429(monkeypatch):
-    monkeypatch.setattr(
-        signaling, "registry", signaling.RoomRegistry(ttl=60, max_guests=1)
-    )
+    reg = signaling.RoomRegistry(ttl=60, max_guests=1)
+    monkeypatch.setattr(signaling, "registry", reg)
     code = _create().json()["room"]["code"]
     assert client.post(
         f"/signal/rooms/{code}/join", headers={"Origin": ALLOWED_ORIGIN}
     ).status_code == 200
+    room = reg.get_by_code(code)
+    reg.activate_peer(room, next(iter(room.peers.values())))
     full = client.post(f"/signal/rooms/{code}/join", headers={"Origin": ALLOWED_ORIGIN})
     assert full.status_code == 429
     assert full.json()["error"] == "room_full"
@@ -417,7 +468,10 @@ def test_host_broadcast_without_target_reaches_every_guest():
             guest.__enter__()
             guests.append(guest)
             assert json.loads(guest.receive_text())["type"] == "ready"
+            # Only an offer activates the guest and announces it to the host.
+            guest.send_text(json.dumps({"type": "offer", "payload": {"sdp": "hi"}}))
             assert json.loads(host.receive_text())["type"] == "peer_joined"
+            assert json.loads(host.receive_text())["type"] == "offer"
 
         host.send_text(json.dumps({"type": "offer", "payload": {"sdp": "all"}}))
         for guest in guests:
@@ -428,3 +482,121 @@ def test_host_broadcast_without_target_reaches_every_guest():
             guest.__exit__(None, None, None)
         host.__exit__(None, None, None)
     assert peer_a.id != peer_b.id
+
+
+def test_room_expiry_closes_host_and_guest_sockets(monkeypatch):
+    monkeypatch.setattr(
+        signaling,
+        "registry",
+        signaling.RoomRegistry(ttl=1.0, join_timeout=10.0),
+    )
+    created = _create().json()
+    host_token = created["hostToken"]
+    code = created["room"]["code"]
+    joined = client.post(
+        f"/signal/rooms/{code}/join", headers={"Origin": ALLOWED_ORIGIN}
+    ).json()
+    room_id = joined["room"]["id"]
+    peer_token = joined["peerToken"]
+
+    host = _ws(room_id, "host", host_token)
+    host.__enter__()
+    guest = _ws(room_id, "guest", peer_token)
+    guest.__enter__()
+    try:
+        assert json.loads(host.receive_text())["type"] == "ready"
+        assert json.loads(guest.receive_text())["type"] == "ready"
+        guest.send_text(json.dumps({"type": "offer", "payload": {"sdp": "x"}}))
+        assert json.loads(host.receive_text())["type"] == "peer_joined"
+        assert json.loads(host.receive_text())["type"] == "offer"
+
+        # Both sockets are woken by the per-socket TTL and closed, rather than
+        # lingering after the room has been pruned from the registry.  The
+        # guest can close first, so the host may see peer_left before its own
+        # expiry notice.
+        guest_expiry = json.loads(guest.receive_text())
+        assert guest_expiry.get("detail") == "room_expired", guest_expiry
+        host_expiry = json.loads(host.receive_text())
+        if host_expiry.get("type") == "peer_left":
+            host_expiry = json.loads(host.receive_text())
+        assert host_expiry.get("detail") == "room_expired", host_expiry
+        with pytest.raises(WebSocketDisconnect):
+            host.receive_text()
+        with pytest.raises(WebSocketDisconnect):
+            guest.receive_text()
+    finally:
+        guest.__exit__(None, None, None)
+        host.__exit__(None, None, None)
+
+
+def test_guest_without_offer_times_out_and_frees_slot(monkeypatch):
+    monkeypatch.setattr(
+        signaling,
+        "registry",
+        signaling.RoomRegistry(ttl=60, join_timeout=0.3),
+    )
+    code = _create().json()["room"]["code"]
+    joined = client.post(
+        f"/signal/rooms/{code}/join", headers={"Origin": ALLOWED_ORIGIN}
+    ).json()
+
+    guest = _ws(joined["room"]["id"], "guest", joined["peerToken"])
+    guest.__enter__()
+    try:
+        assert json.loads(guest.receive_text())["type"] == "ready"
+        timeout = json.loads(guest.receive_text())
+        assert timeout["detail"] == "join_timeout"
+        with pytest.raises(WebSocketDisconnect):
+            guest.receive_text()
+    finally:
+        guest.__exit__(None, None, None)
+
+    status = client.get(f"/signal/rooms/{code}", headers={"Origin": ALLOWED_ORIGIN})
+    assert status.json()["room"]["pending"] == 0
+    assert status.json()["room"]["guests"] == 0
+
+    again = client.post(
+        f"/signal/rooms/{code}/join", headers={"Origin": ALLOWED_ORIGIN}
+    )
+    assert again.status_code == 200
+
+
+def test_second_active_offer_is_rejected_when_room_full(monkeypatch):
+    monkeypatch.setattr(
+        signaling,
+        "registry",
+        signaling.RoomRegistry(ttl=60, max_guests=1, join_timeout=10.0),
+    )
+    created = _create().json()
+    code = created["room"]["code"]
+    first = client.post(
+        f"/signal/rooms/{code}/join", headers={"Origin": ALLOWED_ORIGIN}
+    ).json()
+    second = client.post(
+        f"/signal/rooms/{code}/join", headers={"Origin": ALLOWED_ORIGIN}
+    ).json()
+
+    host = _ws(created["room"]["id"], "host", created["hostToken"])
+    host.__enter__()
+    guest = _ws(created["room"]["id"], "guest", first["peerToken"])
+    guest.__enter__()
+    overflow = _ws(created["room"]["id"], "guest", second["peerToken"])
+    overflow.__enter__()
+    try:
+        assert json.loads(host.receive_text())["type"] == "ready"
+        assert json.loads(guest.receive_text())["type"] == "ready"
+        guest.send_text(json.dumps({"type": "offer", "payload": {"sdp": "first"}}))
+        assert json.loads(host.receive_text())["type"] == "peer_joined"
+        assert json.loads(host.receive_text())["type"] == "offer"
+
+        assert json.loads(overflow.receive_text())["type"] == "ready"
+        overflow.send_text(json.dumps({"type": "offer", "payload": {"sdp": "second"}}))
+        rejected = json.loads(overflow.receive_text())
+        assert rejected["detail"] == "room_full"
+    finally:
+        overflow.__exit__(None, None, None)
+        guest.__exit__(None, None, None)
+        host.__exit__(None, None, None)
+
+    status = client.get(f"/signal/rooms/{code}", headers={"Origin": ALLOWED_ORIGIN})
+    assert status.json()["room"]["guests"] == 1
