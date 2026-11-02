@@ -29,6 +29,8 @@ import asyncio
 import collections
 import json
 import logging
+import os
+import socket
 import struct
 import time
 import urllib.request
@@ -475,6 +477,17 @@ class LightDriver:
         """Return measured end-to-end latency in milliseconds."""
         return self._latency_ms
 
+    def record_latency(self, latency_ms: float) -> None:
+        """Store a measured round-trip time; negative values are clamped to 0."""
+        self._latency_ms = max(0.0, float(latency_ms))
+
+    def latency_diagnostics(self) -> float | str:
+        """Return a measured latency, or ``"unmeasurable"`` when none exists."""
+        value = self.latency_ms()
+        if value is None or value <= 0:
+            return "unmeasurable"
+        return round(float(value), 1)
+
 
 #
 # WiZ driver — UDP broadcast, no keys, end-to-end latency proof.
@@ -485,49 +498,115 @@ class LightDriver:
 #
 
 
-async def _wiz_discover(timeout: float = 2.0) -> List[dict]:
-    """Discover WiZ fixtures via UDP broadcast.
+WIZ_PORT = 38899
+WIZ_TIMEOUT = 2.0
 
-    Sends the WiZ discovery magic bytes and returns a list of discovered
-    fixtures keyed by their network address.
-    """
-    fixtures: List[dict] = []
+
+def _wiz_broadcast_addresses() -> List[str]:
+    """Return global and subnet-directed broadcast addresses for discovery."""
+    addresses = ["255.255.255.255"]
+    override = os.environ.get("WIZ_BROADCAST")
+    if override:
+        addresses.insert(0, override)
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            probe.connect(("8.8.8.8", 80))
+            local_ip = probe.getsockname()[0]
+        finally:
+            probe.close()
+        subnet_broadcast = ".".join(local_ip.split(".")[:3] + ["255"])
+        if subnet_broadcast not in addresses:
+            addresses.append(subnet_broadcast)
+    except OSError:
+        pass
+    return addresses
+
+
+def _wiz_request(host: str, port: int, method: str, params: dict,
+                 timeout: float = WIZ_TIMEOUT) -> tuple[dict, float, tuple]:
+    """Send one WiZ JSON command and wait for the bulb acknowledgement.
+
+    Returns ``(response, round_trip_ms, peer_address)``.  The round-trip is
+    measured from ``sendto`` to the matching ``recvfrom``, so it is a real
+    device ack rather than a client-side estimate.
+    """
+    payload = json.dumps({"method": method, "params": params}).encode("utf-8")
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(timeout)
+    try:
+        start = time.perf_counter()
+        sock.sendto(payload, (host, port))
+        data, addr = sock.recvfrom(4096)
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+    except OSError as exc:
+        raise LightDriverError(f"wiz_io_error: {type(exc).__name__}") from exc
+    finally:
+        sock.close()
+    try:
+        response = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise LightDriverError("wiz_bad_response") from exc
+    if not isinstance(response, dict):
+        raise LightDriverError("wiz_bad_response")
+    return response, elapsed_ms, addr
+
+
+def _parse_device_address(address: str, default_port: int) -> tuple[str, int]:
+    """Split ``scheme://host[:port]`` into ``(host, port)``."""
+    value = address.split("://", 1)[-1]
+    host, _, port = value.partition(":")
+    return host, int(port) if port else default_port
+
+
+async def _wiz_discover(timeout: float = 2.0) -> List[dict]:
+    """Discover WiZ fixtures with a broadcast ``getPilot`` request.
+
+    WiZ bulbs speak JSON over UDP 38899.  Broadcast the state query and use
+    each response's source address plus MAC to build a stable device id.
+    """
+    fixtures: dict[str, dict] = {}
+    payload = json.dumps({"method": "getPilot", "params": {}}).encode("utf-8")
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.settimeout(timeout)
+        sock.settimeout(0.2)
+        for broadcast in _wiz_broadcast_addresses():
+            try:
+                sock.sendto(payload, (broadcast, WIZ_PORT))
+            except OSError:
+                continue
 
-        # WiZ discovery command (magic bytes 0x0100000a)
-        sock.sendto(b"\x01\x00\x00\x0a", ("255.255.255.255", 1930))
-
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            remaining = deadline - time.time()
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
             try:
                 data, addr = sock.recvfrom(4096)
             except socket.timeout:
+                continue
+            except OSError:
                 break
-
-            if len(data) >= 16:
-                # WiZ response: IP(4) + port(2) + type(1) + name_len(1) + name
-                ip_bytes = data[:4]
-                port = data[4] | (data[5] << 8)
-                dev_type = data[6]
-                name_len = data[7]
-                name = data[8:8 + name_len].decode("utf-8", errors="ignore") if len(data) > 8 else ""
-
-                ip_str = ".".join(str(b) for b in ip_bytes)
-                fixtures.append({
-                    "id": f"wiz:{ip_str}",
-                    "address": f"wiz://{ip_str}:{port}",
-                    "name": name or f"WiZ light ({ip_str})",
-                    "model": "wizz",
-                    "kind": "wiz",
-                })
-        sock.close()
+            try:
+                response = json.loads(data.decode("utf-8"))
+            except (UnicodeDecodeError, ValueError):
+                continue
+            result = response.get("result") if isinstance(response, dict) else None
+            if not isinstance(result, dict):
+                continue
+            ip_str, port = addr[0], addr[1]
+            mac = str(result.get("mac") or "").replace(":", "").lower()
+            device_id = f"wiz:{mac}" if mac else f"wiz:{ip_str}"
+            fixtures[device_id] = {
+                "id": device_id,
+                "address": f"wiz://{ip_str}:{port}",
+                "name": f"WiZ light ({ip_str})",
+                "model": str(result.get("moduleName") or "wiz"),
+                "kind": "wiz",
+            }
     except Exception as exc:
         logger.warning("[WiZ] Discover error: %s", exc)
-    return fixtures
+    finally:
+        sock.close()
+    return list(fixtures.values())
 
 
 class WizDriver(LightDriver):
@@ -551,31 +630,33 @@ class WizDriver(LightDriver):
         return self._token
 
     async def set_state(self, state: dict) -> None:
-        """Send a colour/brightness command to a WiZ light via UDP."""
+        """Send a colour/brightness command to a WiZ light via UDP.
+
+        Uses the documented ``setPilot`` JSON command and waits for the
+        ``{"result": {"success": true}}`` acknowledgement, recording the real
+        ack round-trip for diagnostics.  WiZ has no fade duration parameter in
+        ``setPilot`` (``speed`` controls scene animation), so ``transition`` is
+        intentionally ignored here.
+        """
         dev_id = state.get("device_id")
-        if not dev_id or dev_id not in self._devices:
-            logger.warning("[WiZ] Unknown device %s", dev_id)
-            return
+        device = self._devices.get(dev_id)
+        if device is None:
+            raise LightDriverError("unknown_device")
 
-        ip_port = self._devices[dev_id]["address"].replace("wiz://", "")
-        ip_str, port_str = ip_port.split(":")
-        port = int(port_str)
-
+        host, port = _parse_device_address(device.get("address", ""), WIZ_PORT)
         r = min(255, max(0, int(state.get("r", 0))))
         g = min(255, max(0, int(state.get("g", 0))))
         b = min(255, max(0, int(state.get("b", 0))))
         brightness = min(100, max(0, int(state.get("brightness", 100))))
-        transition = max(0, float(state.get("transition", 0)))
+        params = {"r": r, "g": g, "b": b, "dimming": brightness, "state": True}
 
-        # WiZ colour command format (simplified)
-        # 0x01 + r + g + b + brightness(1 byte) + transition(1 byte)
-        cmd = bytes([0x01, r, g, b, brightness, int(transition / 100 * 255)])
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.sendto(cmd, (ip_str, port))
-            sock.close()
-        except Exception as exc:
-            logger.warning("[WiZ] set_state error for %s: %s", dev_id, exc)
+        response, elapsed_ms, _ = await asyncio.to_thread(
+            _wiz_request, host, port, "setPilot", params, WIZ_TIMEOUT,
+        )
+        result = response.get("result")
+        if not isinstance(result, dict) or not result.get("success"):
+            raise LightDriverError("wiz_ack_failed")
+        self.record_latency(elapsed_ms)
 
     def capabilities(self) -> dict:
         return {"supports_rgb": True, "supports_brightness": True,
@@ -584,7 +665,7 @@ class WizDriver(LightDriver):
 
     def status(self) -> dict:
         devices = list(self._devices.values())
-        latency = round(getattr(WizDriver, "_first_rtt", float("inf")), 1) if getattr(WizDriver, "_first_rtt", float("inf")) != float("inf") else "unmeasurable"
+        latency = self.latency_diagnostics()
         return {"online": bool(self._devices),
                 "latencyMs": latency,
                 "devices": [{"id": d["id"], "name": d["name"], "ready": d.get("ready", False), "needs_credentials": d.get("needs_credentials", False)} for d in devices]}
@@ -599,29 +680,40 @@ class WizDriver(LightDriver):
 
 
 async def _tuya_scan(timeout: float = 5.0) -> List[dict]:
-    """Scan for Tuya devices using tinytuya.
+    """Scan for Tuya devices using tinytuya's network scanner.
 
-    Returns discovered device summaries (id, address, name, model).
+    ``tinytuya.deviceScan`` returns a mapping of ``ip -> info``; the public
+    ``tinytuya.scan`` helper only prints and returns ``None``, so it cannot be
+    used here.  The gateway id (``gwId``) is the stable device id and is also
+    what the local-key handshake needs.
     """
     fixtures: List[dict] = []
     try:
         import tinytuya
-        results = tinytuya.scan(timeout=timeout)
-        for device_id, info in results.items():
-            ip = info.get("ip", "")
-            name = info.get("name", "Tuya device")
-            model = info.get("model", "")
-            fixtures.append({
-                "id": f"tuya:{ip}",
-                "address": f"tuya://{ip}",
-                "name": name or f"Tuya device ({model})",
-                "model": model,
-                "kind": "tuya",
-            })
+        results = tinytuya.deviceScan(
+            verbose=False, maxretry=max(1, int(timeout)), poll=False,
+        )
     except ImportError:
         logger.warning("[Tuya] tinytuya not available, skipping")
+        return fixtures
     except Exception as exc:
         logger.debug("[Tuya] Scan error: %s", exc)
+        return fixtures
+
+    for ip, info in (results or {}).items():
+        if not isinstance(info, dict):
+            continue
+        gateway_id = str(info.get("gwId") or info.get("id") or ip)
+        fixtures.append({
+            "id": f"tuya:{gateway_id}",
+            "device_id": gateway_id,
+            "address": f"tuya://{ip}",
+            "ip": ip,
+            "name": info.get("name") or f"Tuya device ({ip})",
+            "model": info.get("productKey", ""),
+            "version": info.get("version") or 3.3,
+            "kind": "tuya",
+        })
     return fixtures
 
 
@@ -634,6 +726,7 @@ class TuyaDriver(LightDriver):
         self._key: str | None = None  # stored Bridge-side only
         self._devices: dict[str, dict] = {}
         self._latency_ms: float = 0.0
+        self._timeout: float = 2.0
 
     async def discover(self) -> List[dict]:
         discovered = await _tuya_scan()
@@ -655,24 +748,54 @@ class TuyaDriver(LightDriver):
         return self._token
 
     async def set_state(self, state: dict) -> None:
-        """Send a colour/brightness command to a Tuya light.
+        """Send a colour/brightness command to a Tuya light via tinytuya.
 
-        In a full implementation this would use ``tinytuya`` with the stored
-        local key.  For now we log that the command would be sent.
+        Requires a Bridge-stored local key from :meth:`pair`.  The key is only
+        passed to ``tinytuya.BulbDevice`` and is never logged or returned.  The
+        command blocks on the device ack, so it runs in a worker thread and the
+        measured round-trip is recorded for diagnostics.
         """
         dev_id = state.get("device_id")
-        if not dev_id or dev_id not in self._devices:
-            logger.warning("[Tuya] Unknown device %s", dev_id)
-            return
+        device = self._devices.get(dev_id)
+        if device is None:
+            raise LightDriverError("unknown_device")
+        if not self._key:
+            raise LightDriverError("needs_credentials")
+        try:
+            import tinytuya
+        except ImportError as exc:
+            raise LightDriverError("tinytuya_not_installed") from exc
 
         r = min(255, max(0, int(state.get("r", 0))))
         g = min(255, max(0, int(state.get("g", 0))))
         b = min(255, max(0, int(state.get("b", 0))))
         brightness = min(100, max(0, int(state.get("brightness", 100))))
-        transition = max(0, float(state.get("transition", 0)))
+        host = device.get("ip") or _parse_device_address(device.get("address", ""), 6668)[0]
+        gateway_id = str(device.get("device_id") or dev_id)
+        try:
+            version = float(device.get("version") or 3.3)
+        except (TypeError, ValueError):
+            version = 3.3
 
-        logger.info("[Tuya] Would set state %s on device %s: rgb=(%d,%d,%d) bri=%d%% trans=%.1fs",
-                     dev_id, r, g, b, brightness, transition)
+        def _send() -> tuple[dict, dict | None, float]:
+            bulb = tinytuya.BulbDevice(gateway_id, host, self._key)
+            try:
+                bulb.set_version(version)
+                bulb.set_socketTimeout(self._timeout)
+                bulb.set_socketPersistent(False)
+                start = time.perf_counter()
+                colour_result = bulb.set_colour(r, g, b)
+                brightness_result = bulb.set_brightness_percentage(brightness)
+                elapsed_ms = (time.perf_counter() - start) * 1000.0
+                return colour_result, brightness_result, elapsed_ms
+            finally:
+                bulb.close()
+
+        colour_result, brightness_result, elapsed_ms = await asyncio.to_thread(_send)
+        for result in (colour_result, brightness_result):
+            if isinstance(result, dict) and "Error" in result:
+                raise LightDriverError(f"tuya_error: {result.get('Error')}")
+        self.record_latency(elapsed_ms)
 
     def capabilities(self) -> dict:
         return {"supports_rgb": True, "supports_brightness": True,
@@ -681,7 +804,7 @@ class TuyaDriver(LightDriver):
 
     def status(self) -> dict:
         devices = list(self._devices.values())
-        latency = round(getattr(WizDriver, "_first_rtt", float("inf")), 1) if getattr(WizDriver, "_first_rtt", float("inf")) != float("inf") else "unmeasurable"
+        latency = self.latency_diagnostics()
         return {"online": bool(self._devices),
                 "latencyMs": latency,
                 "devices": [{"id": d["id"], "name": d["name"], "ready": d.get("ready", False), "needs_credentials": d.get("needs_credentials", False)} for d in devices]}
@@ -797,7 +920,7 @@ class LifxDriver(LightDriver):
 
     def status(self) -> dict:
         devices = list(self._devices.values())
-        latency = round(getattr(WizDriver, "_first_rtt", float("inf")), 1) if getattr(WizDriver, "_first_rtt", float("inf")) != float("inf") else "unmeasurable"
+        latency = self.latency_diagnostics()
         return {"online": bool(self._devices),
                 "latencyMs": latency,
                 "devices": [{"id": d["id"], "name": d["name"], "ready": d.get("ready", False), "needs_credentials": d.get("needs_credentials", False)} for d in devices]}
@@ -903,7 +1026,7 @@ class GoveeDriver(LightDriver):
 
     def status(self) -> dict:
         devices = list(self._devices.values())
-        latency = round(getattr(WizDriver, "_first_rtt", float("inf")), 1) if getattr(WizDriver, "_first_rtt", float("inf")) != float("inf") else "unmeasurable"
+        latency = self.latency_diagnostics()
         return {"online": bool(self._devices),
                 "latencyMs": latency,
                 "devices": [{"id": d["id"], "name": d["name"], "ready": d.get("ready", False), "needs_credentials": d.get("needs_credentials", False)} for d in devices]}
@@ -947,7 +1070,7 @@ class MatterDriver(LightDriver):
 
     def status(self) -> dict:
         devices = list(self._devices.values())
-        latency = round(getattr(WizDriver, "_first_rtt", float("inf")), 1) if getattr(WizDriver, "_first_rtt", float("inf")) != float("inf") else "unmeasurable"
+        latency = self.latency_diagnostics()
         return {"online": bool(self._devices),
                 "latencyMs": latency,
                 "devices": [{"id": d["id"], "name": d["name"], "ready": d.get("ready", False), "needs_credentials": d.get("needs_credentials", False)} for d in devices]}
@@ -1055,7 +1178,7 @@ class HueDriver(LightDriver):
 
     def status(self) -> dict:
         devices = list(self._devices.values())
-        latency = round(getattr(WizDriver, "_first_rtt", float("inf")), 1) if getattr(WizDriver, "_first_rtt", float("inf")) != float("inf") else "unmeasurable"
+        latency = self.latency_diagnostics()
         return {"online": bool(self._devices),
                 "latencyMs": latency,
                 "devices": [{"id": d["id"], "name": d["name"], "ready": d.get("ready", False), "needs_credentials": d.get("needs_credentials", False)} for d in devices]}
@@ -1160,7 +1283,7 @@ class HomeAssistantDriver(LightDriver):
 
     def status(self) -> dict:
         devices = list(self._devices.values())
-        latency = round(getattr(WizDriver, "_first_rtt", float("inf")), 1) if getattr(WizDriver, "_first_rtt", float("inf")) != float("inf") else "unmeasurable"
+        latency = self.latency_diagnostics()
         return {"online": bool(self._devices),
                 "latencyMs": latency,
                 "devices": [{"id": d["id"], "name": d["name"], "ready": d.get("ready", False), "needs_credentials": d.get("needs_credentials", False)} for d in devices]}
@@ -1339,6 +1462,11 @@ class LightStreamController:
                 await self.sleep(0.005)
         except asyncio.CancelledError:
             raise
+        except Exception:
+            # A failed device ack must not take down the background delivery
+            # task or leave an unretrieved task exception behind.
+            logger.warning("[LIGHT] delivery failed for %s/%s", kind, device_id,
+                           exc_info=True)
         finally:
             self.tasks.pop(device_id, None)
 
@@ -1477,16 +1605,31 @@ def register_light_drivers(app: FastAPI, bridge, drivers: dict[str, LightDriver]
                     driver = driver_instances.get(kind)
                     if driver:
                         info = driver.status()
-                        info["latencyMs"] = driver.latency_ms()
+                        info["latencyMs"] = driver.latency_diagnostics()
                         await _send_json(websocket, {"type": "status", "info": info})
                     else:
                         await _send_json(websocket, {"type": "error", "detail": "unknown_driver"})
+
+                elif mtype == "diagnostics":
+                    report = {}
+                    for kind, driver in driver_instances.items():
+                        try:
+                            status = driver.status()
+                        except Exception as exc:
+                            status = {"online": False, "error": type(exc).__name__}
+                        report[kind] = {
+                            "capabilities": driver.capabilities(),
+                            "status": status,
+                            "latencyMs": driver.latency_diagnostics(),
+                        }
+                    await _send_json(websocket, {"type": "diagnostics", "drivers": report})
 
                 elif mtype == "latency":
                     kind = obj.get("kind")
                     if kind and kind in driver_instances:
                         # Report measured latency from the driver
                         driver_latencies[kind] = obj.get("latencyMs", 0.0)
+                        driver_instances[kind].record_latency(obj.get("latencyMs", 0.0))
                         await _send_json(websocket, {"type": "latency_ack", "kind": kind})
                     else:
                         await _send_json(websocket, {"type": "error", "detail": "unknown_driver"})
