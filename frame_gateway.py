@@ -42,6 +42,7 @@ import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from security import URLValidationError, redact_url, validate_fetch_url
+from light_zones import LightZoneConfig, LightZoneError
 
 logger = logging.getLogger("live_feed_quantizer.gateway")
 
@@ -1542,13 +1543,13 @@ LIGHT_METHODS = ["wiz", "tuya", "lifx", "govee", "matter", "hue", "home_assistan
 
 
 def register_light_drivers(app: FastAPI, bridge, drivers: dict[str, LightDriver] | None = None,
-                           tuya_store=None) -> None:
+                           tuya_store=None, zone_config: LightZoneConfig | None = None) -> None:
     """Register light-control WS endpoint and diagnostics.
 
     ``drivers`` is injectable so tests can exercise the real WS path with a
     fake driver; production callers get the built-in driver set.
     ``tuya_store`` is the Bridge-side credential store shared with the Tuya
-    onboarding HTTP endpoints.
+    onboarding HTTP endpoints.  ``zone_config`` holds user groups/zones/scenes.
     """
 
     driver_instances: dict[str, LightDriver] = dict(drivers) if drivers is not None else {
@@ -1560,8 +1561,10 @@ def register_light_drivers(app: FastAPI, bridge, drivers: dict[str, LightDriver]
         "hue": HueDriver(bridge),
         "home_assistant": HomeAssistantDriver(bridge),
     }
+    zones = zone_config if zone_config is not None else LightZoneConfig()
     app.state.light_drivers = driver_instances
     app.state.tuya_store = tuya_store
+    app.state.light_zones = zones
 
     @app.websocket("/lights/ws")
     async def lights_socket(websocket: WebSocket):
@@ -1574,6 +1577,19 @@ def register_light_drivers(app: FastAPI, bridge, drivers: dict[str, LightDriver]
         driver_latencies: dict[str, float] = {
             did: 0.0 for did in driver_instances
         }
+
+        async def submit_zone_outputs(outputs: dict[str, dict]) -> list[str]:
+            applied: list[str] = []
+            for device_id, state in outputs.items():
+                kind = zones.device_kinds.get(device_id, "wiz")
+                if kind not in driver_instances:
+                    continue
+                forwarded = dict(state)
+                forwarded["device_id"] = device_id
+                forwarded["kind"] = kind
+                await controller.submit(device_id, forwarded)
+                applied.append(device_id)
+            return applied
 
         try:
             while True:
@@ -1651,6 +1667,67 @@ def register_light_drivers(app: FastAPI, bridge, drivers: dict[str, LightDriver]
                         await _send_json(websocket, {"type": "status", "info": info})
                     else:
                         await _send_json(websocket, {"type": "error", "detail": "unknown_driver"})
+
+                elif mtype == "zones":
+                    action = obj.get("action", "get")
+                    try:
+                        if action == "get":
+                            pass
+                        elif action == "configure":
+                            zones.replace(obj.get("config"))
+                        elif action == "preset":
+                            zones.apply_preset(obj.get("preset_id"))
+                        elif action == "frame":
+                            outputs = zones.frame_outputs(
+                                obj.get("levels") or {}, obj.get("colors") or {},
+                            )
+                            applied = await submit_zone_outputs(outputs)
+                            await _send_json(websocket, {
+                                "type": "zones", "action": "frame",
+                                "applied": applied, "config": zones.to_dict(),
+                            })
+                            continue
+                        elif action == "scene":
+                            outputs = zones.scene_outputs(obj.get("scene_id"))
+                            applied = await submit_zone_outputs(outputs)
+                            await _send_json(websocket, {
+                                "type": "zones", "action": "scene",
+                                "applied": applied, "config": zones.to_dict(),
+                            })
+                            continue
+                        elif action == "device":
+                            zones.set_device(
+                                obj.get("device_id"),
+                                brightness_cap=obj.get("brightness_cap"),
+                                on=obj.get("on"),
+                                kind=obj.get("kind"),
+                            )
+                        elif action == "slider":
+                            zones.set_zone_sliders(
+                                obj.get("zone_id"),
+                                smoothing_ms=obj.get("smoothing_ms"),
+                                reactivity=obj.get("reactivity"),
+                                brightness_cap=obj.get("brightness_cap"),
+                                on=obj.get("on"),
+                            )
+                        elif action == "global":
+                            zones.set_global_sliders(
+                                smoothing_ms=obj.get("smoothing_ms"),
+                                reactivity=obj.get("reactivity"),
+                            )
+                        else:
+                            await _send_json(websocket, {"type": "error",
+                                                         "detail": "unknown_zone_action"})
+                            continue
+                    except LightZoneError as exc:
+                        await _send_json(websocket, {"type": "error", "detail": str(exc)})
+                        continue
+                    except LightDriverError as exc:
+                        await _send_json(websocket, {"type": "error", "detail": str(exc)})
+                        continue
+                    await _send_json(websocket, {
+                        "type": "zones", "action": action, "config": zones.to_dict(),
+                    })
 
                 elif mtype == "diagnostics":
                     report = {}

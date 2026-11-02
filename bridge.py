@@ -142,9 +142,10 @@ def create_app(
     light_drivers: dict | None = None,
     tuya_store: TuyaCredentialStore | None = None,
     tuya_cloud_factory=None,
+    zone_config=None,
 ) -> FastAPI:
     """Build the Bridge app.  Tests may inject a gateway, light drivers,
-    credential store, and fake Tuya cloud client."""
+    credential store, Tuya cloud client, and zone configuration."""
 
     shared_gateway = gateway or FrameGateway()
     credential_store = (
@@ -172,7 +173,7 @@ def create_app(
     )
 
     register_light_drivers(app, shared_gateway, drivers=light_drivers,
-                           tuya_store=credential_store)
+                           tuya_store=credential_store, zone_config=zone_config)
 
     @app.middleware("http")
     async def enforce_loopback_host(request: Request, call_next):
