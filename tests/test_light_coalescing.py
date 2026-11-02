@@ -101,8 +101,13 @@ def test_light_ws_coalesces_30hz_burst_to_2hz_driver(capsys):
 
 
 def test_light_ws_timer_delivers_final_odd_state_without_flush(capsys):
-    """The trailing timer, not an explicit flush, delivers the odd final state."""
-    driver = FakeLightDriver(max_rate_hz=2.0)
+    """The trailing timer, not an explicit flush, delivers the final state.
+
+    Keep the burst shorter than the first rate boundary so the assertion that
+    the last input differs from the last mid-stream send cannot race the
+    trailing timer (the earlier 59-input version sat right on the 2 s edge).
+    """
+    driver = FakeLightDriver(max_rate_hz=1.0)
     app = bridge.create_app(light_drivers={"fake": driver})
     inputs: list[float] = []
     interval = 1.0 / 30.0
@@ -110,7 +115,7 @@ def test_light_ws_timer_delivers_final_odd_state_without_flush(capsys):
     with TestClient(app, base_url=BASE_URL) as client:
         with client.websocket_connect("/lights/ws") as ws:
             start = time.monotonic()
-            for index in range(59):  # odd length, ~2 s at 30 Hz
+            for index in range(4):  # ~0.13 s, well before the 1 Hz boundary
                 luminance = 1.0 if index % 2 else 0.0
                 inputs.append(luminance)
                 ws.send_text(json.dumps({
@@ -128,7 +133,7 @@ def test_light_ws_timer_delivers_final_odd_state_without_flush(capsys):
             assert inputs[-1] != before_timer[-1][1]["luminance"]
 
             # No flush message: the controller's trailing timer must deliver it.
-            time.sleep(0.8)
+            time.sleep(1.2)
             after_timer = list(driver.calls)
 
     assert after_timer[-1][1]["luminance"] == inputs[-1], "timer did not deliver the final state"
